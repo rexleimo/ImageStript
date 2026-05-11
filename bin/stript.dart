@@ -1,20 +1,49 @@
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:args/args.dart';
+import 'package:stript/core/metadata_inspector.dart';
 import 'package:stript/core/stript_engine.dart';
 import 'package:stript/core/presets.dart';
 
-const supportedExtensions = {'.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tiff', '.tif'};
+const supportedExtensions = {
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  '.bmp',
+  '.tiff',
+  '.tif',
+};
 
 void main(List<String> args) async {
-  final parser = ArgParser()
-    ..addOption('output', abbr: 'o', help: 'Output file or directory')
-    ..addOption('noise', defaultsTo: '0.03', help: 'Noise fraction (0.0-1.0)')
-    ..addOption('strength', defaultsTo: '1', help: 'Noise strength')
-    ..addOption('resize', defaultsTo: '0.998', help: 'Resize perturbation scale')
-    ..addOption('jpeg', defaultsTo: '97', help: 'JPEG re-encode quality (0-100)')
-    ..addFlag('aggressive', help: 'Use aggressive preset')
-    ..addFlag('help', abbr: 'h', help: 'Show usage', negatable: false);
+  final parser =
+      ArgParser()
+        ..addOption('output', abbr: 'o', help: 'Output file or directory')
+        ..addOption(
+          'noise',
+          defaultsTo: '0.03',
+          help: 'Noise fraction (0.0-1.0)',
+        )
+        ..addOption('strength', defaultsTo: '1', help: 'Noise strength')
+        ..addOption(
+          'resize',
+          defaultsTo: '0.998',
+          help: 'Resize perturbation scale',
+        )
+        ..addOption(
+          'jpeg',
+          defaultsTo: '97',
+          help: 'JPEG re-encode quality (0-100)',
+        )
+        ..addFlag('aggressive', help: 'Use aggressive preset')
+        ..addFlag(
+          'inspect-only',
+          help: 'Only scan for AI/source metadata; do not write output files',
+          negatable: false,
+        )
+        ..addFlag('help', abbr: 'h', help: 'Show usage', negatable: false);
 
   final results = parser.parse(args);
 
@@ -25,14 +54,15 @@ void main(List<String> args) async {
     exit(0);
   }
 
-  final params = results['aggressive']
-      ? StriptParams.presetParams[Preset.aggressive]!
-      : StriptParams(
-          noiseFraction: double.parse(results['noise']),
-          noiseStrength: int.parse(results['strength']),
-          resizeScale: double.parse(results['resize']),
-          jpegQuality: int.parse(results['jpeg']),
-        );
+  final params =
+      results['aggressive']
+          ? StriptParams.presetParams[Preset.aggressive]!
+          : StriptParams(
+            noiseFraction: double.parse(results['noise']),
+            noiseStrength: int.parse(results['strength']),
+            resizeScale: double.parse(results['resize']),
+            jpegQuality: int.parse(results['jpeg']),
+          );
 
   final engine = StriptEngine(params: params);
   final inputPath = results.rest.first;
@@ -45,34 +75,34 @@ void main(List<String> args) async {
     return;
   }
 
-  final srcPath = Directory(inputPath);
-  if (!srcPath.existsSync()) {
+  final inputFile = File(inputPath);
+  final inputDir = Directory(inputPath);
+  if (!inputFile.existsSync() && !inputDir.existsSync()) {
     stderr.writeln('Error: path does not exist: $inputPath');
     exit(1);
   }
 
   // Collect files
   List<File> files;
-  if (FileSystemEntity.isFileSync(inputPath)) {
-    files = [File(inputPath)];
+  if (inputFile.existsSync()) {
+    files = [inputFile];
   } else {
-    files = srcPath
-        .listSync()
-        .whereType<File>()
-        .where((f) {
-          final ext = f.path.toLowerCase();
-          final dot = ext.lastIndexOf('.');
-          if (dot == -1) return false;
-          return supportedExtensions.contains(ext.substring(dot));
-        })
-        .toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
+    files =
+        inputDir.listSync().whereType<File>().where((f) {
+            final ext = f.path.toLowerCase();
+            final dot = ext.lastIndexOf('.');
+            if (dot == -1) return false;
+            return supportedExtensions.contains(ext.substring(dot));
+          }).toList()
+          ..sort((a, b) => a.path.compareTo(b.path));
   }
 
   if (files.isEmpty) {
     print('No supported image files found.');
     exit(0);
   }
+
+  final inspectOnly = results['inspect-only'] as bool;
 
   // Determine output directory
   String outDir;
@@ -81,15 +111,25 @@ void main(List<String> args) async {
   } else if (files.length == 1) {
     outDir = '${files.first.parent.path}/output';
   } else {
-    outDir = '$inputPath/output';
+    outDir = '${inputDir.path}/output';
   }
-  Directory(outDir).createSync(recursive: true);
+  if (!inspectOnly) {
+    Directory(outDir).createSync(recursive: true);
+  }
 
-  print('Stript — Processing ${files.length} image(s)...');
-  print('  Noise: ${(params.noiseFraction * 100).toStringAsFixed(0)}% of pixels ±${params.noiseStrength}');
+  print(
+    inspectOnly
+        ? 'Stript — Inspecting ${files.length} image(s)...'
+        : 'Stript — Processing ${files.length} image(s)...',
+  );
+  print(
+    '  Noise: ${(params.noiseFraction * 100).toStringAsFixed(0)}% of pixels ±${params.noiseStrength}',
+  );
   print('  Resize perturbation: ${params.resizeScale}');
   print('  JPEG re-encode quality: ${params.jpegQuality}');
-  print('  Output: $outDir');
+  if (!inspectOnly) {
+    print('  Output: $outDir');
+  }
   print('');
 
   for (final f in files) {
@@ -97,6 +137,12 @@ void main(List<String> args) async {
     final dst = File('$outDir/$name.png');
     try {
       final inputBytes = await f.readAsBytes();
+      final report = MetadataInspector.inspect(inputBytes);
+      print('  Scan ${f.path.split('/').last}: ${report.summary}');
+      for (final line in report.detailLines()) {
+        print('    - $line');
+      }
+      if (inspectOnly) continue;
       final output = await engine.process(inputBytes);
       await dst.writeAsBytes(output);
       print('  OK  ${f.path.split('/').last}  →  ${dst.path.split('/').last}');
@@ -105,5 +151,9 @@ void main(List<String> args) async {
     }
   }
 
-  print('\nDone. ${files.length} image(s) written to $outDir');
+  if (inspectOnly) {
+    print('\nDone. ${files.length} image(s) inspected.');
+  } else {
+    print('\nDone. ${files.length} image(s) written to $outDir');
+  }
 }

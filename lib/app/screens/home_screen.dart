@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:stript/app/widgets/drop_zone.dart';
 import 'package:stript/app/widgets/image_preview.dart';
+import 'package:stript/app/widgets/metadata_report_card.dart';
 import 'package:stript/app/widgets/parameter_sliders.dart';
 import 'package:stript/app/services/processing_service.dart';
 import 'package:stript/core/stript_engine.dart';
 import 'package:stript/core/presets.dart';
+import 'package:stript/core/metadata_inspector.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:stript/app/screens/batch_screen.dart';
 
@@ -21,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<File> _files = [];
   StriptParams _params = StriptParams.presetParams[Preset.standard]!;
   Map<String, Uint8List?> _results = {};
+  Map<String, MetadataReport> _metadataReports = {};
   Set<String> _processing = {};
   late ProcessingService _service;
 
@@ -32,6 +36,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onFilesAdded(List<File> newFiles) {
     setState(() => _files = [..._files, ...newFiles]);
+    unawaited(_scanMetadata(newFiles));
+  }
+
+  Future<void> _scanMetadata(List<File> files) async {
+    for (final file in files) {
+      try {
+        final report = await _service.inspectFile(file);
+        if (!mounted) return;
+        setState(() => _metadataReports[file.path] = report);
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _metadataReports.remove(file.path));
+      }
+    }
   }
 
   void _onParamsChanged(StriptParams newParams) {
@@ -45,7 +63,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_files.length > 1) {
       await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => BatchScreen(files: _files, params: _params)),
+        MaterialPageRoute(
+          builder: (_) => BatchScreen(files: _files, params: _params),
+        ),
       );
       return;
     }
@@ -74,7 +94,9 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved to ${outDir.path}')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Saved to ${outDir.path}')));
     }
   }
 
@@ -83,59 +105,93 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final hasResults = _results.values.any((r) => r != null);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Stript'),
-        centerTitle: false,
-        actions: [
-          if (_files.isNotEmpty)
-            TextButton.icon(
-              onPressed: () => setState(() { _files = []; _results = {}; }),
-              icon: const Icon(Icons.clear_all),
-              label: const Text('Clear'),
-            ),
-          IconButton(icon: const Icon(Icons.settings), onPressed: () {}),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DropZone(files: _files, onFilesAdded: _onFilesAdded),
-            const SizedBox(height: 16),
-            ParameterSliders(params: _params, onChanged: _onParamsChanged),
-            const SizedBox(height: 16),
-            if (_selectedFile != null)
-              Expanded(
-                child: ImagePreview(
-                  originalFile: _selectedFile!,
-                  processedBytes: _results[_selectedFile!.path],
-                  isProcessing: _processing.contains(_selectedFile!.path),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final previewHeight =
+            constraints.maxHeight.isFinite
+                ? (constraints.maxHeight * 0.42).clamp(280.0, 560.0)
+                : 360.0;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Stript'),
+            centerTitle: false,
+            actions: [
+              if (_files.isNotEmpty)
+                TextButton.icon(
+                  onPressed:
+                      () => setState(() {
+                        _files = [];
+                        _results = {};
+                        _metadataReports = {};
+                      }),
+                  icon: const Icon(Icons.clear_all),
+                  label: const Text('Clear'),
                 ),
-              ),
-            if (_files.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  FilledButton.icon(
-                    onPressed: _processing.isNotEmpty ? null : _processAll,
-                    icon: const Icon(Icons.auto_fix_high),
-                    label: Text('Process All (${_files.length})'),
-                  ),
-                  const SizedBox(width: 12),
-                  if (hasResults)
-                    OutlinedButton.icon(
-                      onPressed: _saveAll,
-                      icon: const Icon(Icons.folder_open),
-                      label: const Text('Save All'),
-                    ),
-                ],
-              ),
+              IconButton(icon: const Icon(Icons.settings), onPressed: () {}),
             ],
-          ],
-        ),
-      ),
+          ),
+          body: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DropZone(files: _files, onFilesAdded: _onFilesAdded),
+                        const SizedBox(height: 16),
+                        if (_metadataReports.isNotEmpty) ...[
+                          MetadataReportCard(reports: _metadataReports),
+                          const SizedBox(height: 16),
+                        ],
+                        ParameterSliders(
+                          params: _params,
+                          onChanged: _onParamsChanged,
+                        ),
+                        const SizedBox(height: 16),
+                        if (_selectedFile != null)
+                          SizedBox(
+                            height: previewHeight,
+                            child: ImagePreview(
+                              originalFile: _selectedFile!,
+                              processedBytes: _results[_selectedFile!.path],
+                              isProcessing: _processing.contains(
+                                _selectedFile!.path,
+                              ),
+                            ),
+                          ),
+                        if (_files.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              FilledButton.icon(
+                                onPressed:
+                                    _processing.isNotEmpty ? null : _processAll,
+                                icon: const Icon(Icons.auto_fix_high),
+                                label: Text('Process All (${_files.length})'),
+                              ),
+                              const SizedBox(width: 12),
+                              if (hasResults)
+                                OutlinedButton.icon(
+                                  onPressed: _saveAll,
+                                  icon: const Icon(Icons.folder_open),
+                                  label: const Text('Save All'),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

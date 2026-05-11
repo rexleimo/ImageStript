@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:stript/core/metadata_inspector.dart';
 import 'package:stript/core/stript_engine.dart';
 
 class ProcessingService {
@@ -10,6 +11,11 @@ class ProcessingService {
   Future<Uint8List> processFile(File file) async {
     final bytes = await file.readAsBytes();
     return engine.process(bytes);
+  }
+
+  Future<MetadataReport> inspectFile(File file) async {
+    final bytes = await file.readAsBytes();
+    return MetadataInspector.inspect(bytes);
   }
 
   Future<Map<String, Uint8List>> processBatch(List<File> files) async {
