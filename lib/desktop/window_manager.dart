@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'dart:ui';
 import 'package:window_manager/window_manager.dart';
 
 class DesktopWindowManager {

@@ -28,7 +28,7 @@ class DropZone extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 48),
         decoration: BoxDecoration(
-          border: Border.all(color: theme.colorScheme.outline.withOpacity(0.5), width: 2),
+          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.5), width: 2),
           borderRadius: BorderRadius.circular(16),
           color: theme.colorScheme.surfaceContainerLow,
         ),
