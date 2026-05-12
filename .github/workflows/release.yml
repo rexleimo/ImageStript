@@ -2,28 +2,25 @@ name: Build and Publish Release Assets
 
 on:
   push:
-    branches: [main]
     tags:
       - 'V*'
-    paths:
-      - '**'
   workflow_dispatch:
     inputs:
       tag:
         description: Release tag to publish
         required: true
-        default: V1.0.0
+        default: V1.0.1
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'V1.0.0') }}
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 env:
   FLUTTER_VERSION: '3.29.3'
-  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'V1.0.0') }}
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 jobs:
   quality:

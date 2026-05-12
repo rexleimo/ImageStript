@@ -176,12 +176,12 @@ For a no-warning macOS install, the GitHub repository must be configured with Ap
 git status --short
 fvm flutter test
 fvm flutter analyze
-git tag V1.0.0
 git push origin main
-git push origin V1.0.0
+git tag V1.0.1
+git push origin V1.0.1
 ```
 
-GitHub Actions publishes user-downloadable assets to the `V1.0.0` release:
+GitHub Actions publishes user-downloadable assets to the tagged release, currently `V1.0.1`:
 
 - `ImageStript-macos.zip`
 - `ImageStript-windows.zip`
@@ -191,4 +191,4 @@ GitHub Actions publishes user-downloadable assets to the `V1.0.0` release:
 - `stript-cli-macos-arm64.tar.gz`
 - `stript-cli-windows-x64.exe`
 
-Release page: <https://github.com/rexleimo/ImageStript/releases/tag/V1.0.0>
+Release page: <https://github.com/rexleimo/ImageStript/releases/tag/V1.0.1>
