@@ -110,6 +110,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - run: flutter config --enable-windows-desktop
+      - run: flutter doctor -v
       - run: flutter build windows --release
       - name: Package Windows app
         shell: pwsh
@@ -130,11 +132,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - run: yes | sdkmanager --licenses >/dev/null
+      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'platform-tools' || true
       - run: flutter pub get
       - run: flutter build apk --release
       - name: Collect APK
@@ -150,6 +159,7 @@ jobs:
   publish:
     name: Publish GitHub Release
     needs: [cli, macos-app, windows-app, android-apk]
+    if: always() && needs.cli.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -158,19 +168,21 @@ jobs:
           merge-multiple: true
       - name: List release assets
         run: find dist -maxdepth 2 -type f -print -exec ls -lh {} \;
+      - name: Build release notes
+        shell: bash
+        run: |
+          {
+            echo 'Production release assets for ImageStript.'
+            echo
+            echo 'Assets included in this release:'
+            find dist -maxdepth 1 -type f -printf '- %f\n' | sort
+            echo
+            echo 'Note: Android APK uses the current default debug signing config until store signing is configured.'
+          } > release-body.md
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ImageStript ${{ env.RELEASE_TAG }}
-          body: |
-            Production release assets for ImageStript.
-
-            Assets:
-            - macOS app: ImageStript-macos.zip
-            - Windows app: ImageStript-windows.zip
-            - Android APK: ImageStript-android.apk
-            - CLI: stript-cli-linux-x64, stript-cli-macos-arm64, stript-cli-windows-x64.exe
-
-            The APK is signed with the default debug signing config until store signing is configured.
+          body_path: release-body.md
           files: dist/*
           fail_on_unmatched_files: true
