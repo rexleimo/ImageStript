@@ -1,0 +1,176 @@
+name: Build and Publish Release Assets
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'V*'
+    paths:
+      - .github/workflows/release.yml
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish
+        required: true
+        default: V1.0.0
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'V1.0.0') }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: '3.29.3'
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name || 'V1.0.0') }}
+
+jobs:
+  quality:
+    name: Test and analyze
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter test
+      - run: flutter analyze
+
+  cli:
+    name: Build CLI (${{ matrix.os }})
+    needs: quality
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: stript-cli-linux-x64
+          - os: macos-latest
+            artifact: stript-cli-macos-arm64
+          - os: windows-latest
+            artifact: stript-cli-windows-x64.exe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Compile CLI
+        shell: bash
+        run: |
+          mkdir -p dist
+          dart compile exe bin/stript.dart -o "dist/${{ matrix.artifact }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}
+          if-no-files-found: error
+
+  macos-app:
+    name: Build macOS app
+    needs: quality
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build macos --release
+      - name: Package macOS app
+        run: |
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/macos/Build/Products/Release/stript.app \
+            dist/ImageStript-macos.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ImageStript-macos
+          path: dist/ImageStript-macos.zip
+          if-no-files-found: error
+
+  windows-app:
+    name: Build Windows app
+    needs: quality
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - name: Package Windows app
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $exe = Get-ChildItem -Path build/windows -Recurse -Filter stript.exe | Select-Object -First 1
+          if (-not $exe) { throw 'stript.exe was not produced by flutter build windows' }
+          Compress-Archive -Path (Join-Path $exe.Directory.FullName '*') -DestinationPath dist/ImageStript-windows.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ImageStript-windows
+          path: dist/ImageStript-windows.zip
+          if-no-files-found: error
+
+  android-apk:
+    name: Build Android APK
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - name: Collect APK
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/ImageStript-android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ImageStript-android
+          path: dist/ImageStript-android.apk
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: [cli, macos-app, windows-app, android-apk]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: List release assets
+        run: find dist -maxdepth 2 -type f -print -exec ls -lh {} \;
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ImageStript ${{ env.RELEASE_TAG }}
+          body: |
+            Production release assets for ImageStript.
+
+            Assets:
+            - macOS app: ImageStript-macos.zip
+            - Windows app: ImageStript-windows.zip
+            - Android APK: ImageStript-android.apk
+            - CLI: stript-cli-linux-x64, stript-cli-macos-arm64, stript-cli-windows-x64.exe
+
+            The APK is signed with the default debug signing config until store signing is configured.
+          files: dist/*
+          fail_on_unmatched_files: true

@@ -142,4 +142,13 @@ git push origin main
 git push origin V1.0.0
 ```
 
-For GitHub production release publishing, create a release from tag `V1.0.0` and attach the generated artifacts from `build/`.
+GitHub Actions publishes user-downloadable assets to the `V1.0.0` release:
+
+- `ImageStript-macos.zip`
+- `ImageStript-windows.zip`
+- `ImageStript-android.apk`
+- `stript-cli-linux-x64`
+- `stript-cli-macos-arm64`
+- `stript-cli-windows-x64.exe`
+
+Release page: <https://github.com/rexleimo/ImageStript/releases/tag/V1.0.0>
