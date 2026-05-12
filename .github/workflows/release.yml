@@ -49,11 +49,17 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            artifact: stript-cli-linux-x64
+            binary: stript-cli-linux-x64
+            asset: stript-cli-linux-x64.tar.gz
+            package: tar
           - os: macos-latest
-            artifact: stript-cli-macos-arm64
+            binary: stript-cli-macos-arm64
+            asset: stript-cli-macos-arm64.tar.gz
+            package: tar
           - os: windows-latest
-            artifact: stript-cli-windows-x64.exe
+            binary: stript-cli-windows-x64.exe
+            asset: stript-cli-windows-x64.exe
+            package: raw
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -65,12 +71,18 @@ jobs:
       - name: Compile CLI
         shell: bash
         run: |
+          export LC_ALL=C
           mkdir -p dist
-          dart compile exe bin/stript.dart -o "dist/${{ matrix.artifact }}"
+          dart compile exe bin/stript.dart -o "dist/${{ matrix.binary }}"
+          chmod +x "dist/${{ matrix.binary }}" || true
+          if [[ "${{ matrix.package }}" == "tar" ]]; then
+            tar -C dist -czf "dist/${{ matrix.asset }}" "${{ matrix.binary }}"
+            rm "dist/${{ matrix.binary }}"
+          fi
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: dist/${{ matrix.artifact }}
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}
           if-no-files-found: error
 
   macos-app:
@@ -86,16 +98,66 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter build macos --release
-      - name: Package macOS app
+      - name: Sign and notarize macOS app when credentials exist
+        shell: bash
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: |
+          set -euo pipefail
           mkdir -p dist
+          APP="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)"
+          if [[ -z "$APP" ]]; then
+            echo "macOS .app bundle was not produced" >&2
+            exit 1
+          fi
+
+          if [[ -n "${MACOS_CERTIFICATE_P12_BASE64:-}" && -n "${MACOS_CERTIFICATE_PASSWORD:-}" && -n "${MACOS_SIGNING_IDENTITY:-}" && -n "${APPLE_ID:-}" && -n "${APPLE_TEAM_ID:-}" && -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ]]; then
+            KEYCHAIN_PASSWORD="$(uuidgen)"
+            KEYCHAIN_PATH="$RUNNER_TEMP/imagestript-signing.keychain-db"
+            CERTIFICATE_PATH="$RUNNER_TEMP/developer-id.p12"
+            echo "$MACOS_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+            security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+            security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+            security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+            security import "$CERTIFICATE_PATH" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+            security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+            security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+
+            codesign --force --deep --options runtime --timestamp --sign "$MACOS_SIGNING_IDENTITY" "$APP"
+            codesign --verify --deep --strict --verbose=4 "$APP"
+            ditto -c -k --sequesterRsrc --keepParent "$APP" "$RUNNER_TEMP/ImageStript-macos-notary.zip"
+            xcrun notarytool submit "$RUNNER_TEMP/ImageStript-macos-notary.zip" \
+              --apple-id "$APPLE_ID" \
+              --team-id "$APPLE_TEAM_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --wait
+            xcrun stapler staple "$APP"
+            xcrun stapler validate "$APP"
+            spctl --assess --type execute --verbose=4 "$APP"
+            echo "macOS app: Developer ID signed, notarized, and stapled." > dist/macos-signing-status.txt
+          else
+            codesign --force --deep --sign - "$APP"
+            codesign --verify --deep --strict --verbose=4 "$APP"
+            echo "macOS app: ad-hoc signed only. Gatekeeper may require right-click Open or quarantine removal until Apple Developer ID notarization secrets are configured." > dist/macos-signing-status.txt
+          fi
+      - name: Package macOS app
+        shell: bash
+        run: |
+          APP="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' -print -quit)"
           ditto -c -k --sequesterRsrc --keepParent \
-            build/macos/Build/Products/Release/stript.app \
+            "$APP" \
             dist/ImageStript-macos.zip
       - uses: actions/upload-artifact@v4
         with:
           name: ImageStript-macos
-          path: dist/ImageStript-macos.zip
+          path: |
+            dist/ImageStript-macos.zip
+            dist/macos-signing-status.txt
           if-no-files-found: error
 
   windows-app:
@@ -160,7 +222,7 @@ jobs:
   publish:
     name: Publish GitHub Release
     needs: [cli, macos-app, windows-app, android-apk]
-    if: always() && needs.cli.result == 'success'
+    if: always() && needs.cli.result == 'success' && needs.macos-app.result == 'success' && needs.windows-app.result == 'success' && needs.android-apk.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -172,12 +234,23 @@ jobs:
       - name: Build release notes
         shell: bash
         run: |
+          export LC_ALL=C
+          (
+            cd dist
+            find . -maxdepth 1 -type f ! -name macos-signing-status.txt -print0 \
+              | sort -z \
+              | xargs -0 shasum -a 256
+          ) > "$RUNNER_TEMP/SHA256SUMS"
+          mv "$RUNNER_TEMP/SHA256SUMS" dist/SHA256SUMS
           {
             echo 'Production release assets for ImageStript.'
             echo
             echo 'Assets included in this release:'
-            find dist -maxdepth 1 -type f -printf '- %f\n' | sort
+            find dist -maxdepth 1 -type f ! -name macos-signing-status.txt -print | sed 's#^dist/#- #' | sort
             echo
+            cat dist/macos-signing-status.txt
+            echo
+            echo 'macOS CLI users should download stript-cli-macos-arm64.tar.gz, not the legacy raw binary.'
             echo 'Note: Android APK uses the current default debug signing config until store signing is configured.'
           } > release-body.md
       - uses: softprops/action-gh-release@v2
@@ -185,5 +258,37 @@ jobs:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ImageStript ${{ env.RELEASE_TAG }}
           body_path: release-body.md
-          files: dist/*
+          files: |
+            dist/ImageStript-android.apk
+            dist/ImageStript-macos.zip
+            dist/ImageStript-windows.zip
+            dist/SHA256SUMS
+            dist/stript-cli-linux-x64.tar.gz
+            dist/stript-cli-macos-arm64.tar.gz
+            dist/stript-cli-windows-x64.exe
           fail_on_unmatched_files: true
+      - name: Remove stale raw Unix CLI assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_json="$(curl -fsSL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}")"
+          printf '%s' "$release_json" > release.json
+          python3 - <<'PY' > stale-assets.txt
+          import json
+          stale = {"stript-cli-linux-x64", "stript-cli-macos-arm64"}
+          for asset in json.load(open("release.json")).get("assets", []):
+              if asset.get("name") in stale:
+                  print(asset["id"])
+          PY
+          while read -r asset_id; do
+            [[ -z "$asset_id" ]] && continue
+            curl -fsSL -X DELETE \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
+          done < stale-assets.txt

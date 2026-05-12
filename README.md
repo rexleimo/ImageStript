@@ -110,7 +110,9 @@ fvm dart run bin/stript.dart path/to/image.png -o /tmp/stript-output
 
 ## Production Build
 
-Build a macOS production app:
+Production downloads are built by GitHub Actions, not by committing local build output. Use local builds only for smoke testing before pushing.
+
+Build a local macOS release app:
 
 ```bash
 fvm flutter build macos --release
@@ -129,7 +131,44 @@ Android release build, when the Android SDK is configured:
 fvm flutter build apk --release
 ```
 
-Release artifacts are generated under `build/` and are not committed.
+Release artifacts are generated under `build/` locally and are not committed.
+
+## Apple Silicon Download Notes
+
+For Apple Silicon Macs, download:
+
+- GUI app: `ImageStript-macos.zip`
+- CLI: `stript-cli-macos-arm64.tar.gz`
+
+The macOS app is a universal binary (`x86_64` + `arm64`). The CLI tarball preserves the executable bit; the legacy raw `stript-cli-macos-arm64` binary did not, so macOS downloaded it as a non-executable file.
+
+Install the CLI:
+
+```bash
+tar -xzf stript-cli-macos-arm64.tar.gz
+./stript-cli-macos-arm64 --help
+```
+
+If macOS blocks the app or CLI because the release is not notarized, use one of these trust overrides only after verifying that you downloaded it from the official release page:
+
+```bash
+# GUI app after moving ImageStript.app into /Applications
+xattr -dr com.apple.quarantine /Applications/ImageStript.app
+open /Applications/ImageStript.app
+
+# CLI
+xattr -d com.apple.quarantine ./stript-cli-macos-arm64 2>/dev/null || true
+./stript-cli-macos-arm64 --help
+```
+
+For a no-warning macOS install, the GitHub repository must be configured with Apple Developer ID signing and notarization secrets:
+
+- `MACOS_CERTIFICATE_P12_BASE64`
+- `MACOS_CERTIFICATE_PASSWORD`
+- `MACOS_SIGNING_IDENTITY`
+- `APPLE_ID`
+- `APPLE_TEAM_ID`
+- `APPLE_APP_SPECIFIC_PASSWORD`
 
 ## Release Workflow
 
@@ -147,8 +186,9 @@ GitHub Actions publishes user-downloadable assets to the `V1.0.0` release:
 - `ImageStript-macos.zip`
 - `ImageStript-windows.zip`
 - `ImageStript-android.apk`
-- `stript-cli-linux-x64`
-- `stript-cli-macos-arm64`
+- `SHA256SUMS`
+- `stript-cli-linux-x64.tar.gz`
+- `stript-cli-macos-arm64.tar.gz`
 - `stript-cli-windows-x64.exe`
 
 Release page: <https://github.com/rexleimo/ImageStript/releases/tag/V1.0.0>
