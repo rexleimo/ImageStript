@@ -129,6 +129,7 @@ jobs:
             security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
 
             codesign --force --deep --options runtime --timestamp --sign "$MACOS_SIGNING_IDENTITY" "$APP"
+            codesign --force --options runtime --timestamp --entitlements macos/Runner/Release.entitlements --sign "$MACOS_SIGNING_IDENTITY" "$APP"
             codesign --verify --deep --strict --verbose=4 "$APP"
             ditto -c -k --sequesterRsrc --keepParent "$APP" "$RUNNER_TEMP/ImageStript-macos-notary.zip"
             xcrun notarytool submit "$RUNNER_TEMP/ImageStript-macos-notary.zip" \
@@ -142,6 +143,7 @@ jobs:
             echo "macOS app: Developer ID signed, notarized, and stapled." > dist/macos-signing-status.txt
           else
             codesign --force --deep --sign - "$APP"
+            codesign --force --entitlements macos/Runner/Release.entitlements --sign - "$APP"
             codesign --verify --deep --strict --verbose=4 "$APP"
             echo "macOS app: ad-hoc signed only. Gatekeeper may require right-click Open or quarantine removal until Apple Developer ID notarization secrets are configured." > dist/macos-signing-status.txt
           fi
