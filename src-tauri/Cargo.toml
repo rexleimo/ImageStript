@@ -9,6 +9,10 @@ edition = "2021"
 name = "stript_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[[bin]]
+name = "stript"
+path = "src/bin/stript.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -22,6 +26,7 @@ image = "0.25"
 regex = "1"
 flate2 = "1"
 rand = "0.9"
+clap = { version = "4", features = ["derive"] }
 
 [profile.release]
 panic = "abort"
