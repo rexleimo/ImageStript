@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import { readFile } from "@tauri-apps/plugin-fs";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { writeFile, readFile } from "@tauri-apps/plugin-fs";
 import type { MetadataReport, ProcessParams, ProcessResponse, BatchResponse, Preset } from "./types";
 import { PRESET_PARAMS } from "./types";
 
@@ -40,14 +39,11 @@ function renderFileList() {
   if (state.files.length === 0) {
     list.innerHTML = `<div class="drop-zone" id="drop-zone">
       <div class="drop-zone-icon">\u{1F4C1}</div>
-      <div class="drop-zone-text">Drop images or click to browse</div>
-      <div class="drop-zone-hint">PNG, JPEG, WebP supported</div>
+      <div class="drop-zone-text">Click to browse images</div>
+      <div class="drop-zone-hint">PNG, JPEG, WebP</div>
     </div>`;
     const dz = $("drop-zone");
     dz?.addEventListener("click", pickFiles);
-    dz?.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag-over"); });
-    dz?.addEventListener("dragleave", () => dz.classList.remove("drag-over"));
-    dz?.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("drag-over"); handleDropped(e); });
     return;
   }
 
@@ -57,7 +53,7 @@ function renderFileList() {
       ${f.report ? (f.report.findings.length > 0
         ? '<span class="badge badge-warning">AI</span>'
         : '<span class="badge badge-success">Clean</span>')
-        : ""}
+        : '<span class="badge" style="opacity:0.4">...</span>'}
       ${f.processed ? '<span class="badge badge-success">Done</span>' : ""}
     </div>
   `).join("") + `<button class="btn-ghost" id="add-more" style="margin-top:8px;width:100%">+ Add more</button>`;
@@ -157,13 +153,16 @@ function renderPreview() {
   const file = state.files[state.activeIndex];
   if (!file) return;
 
-  const originalSrc = file.originalDataUrl || convertFileSrc(file.path);
+  const originalSrc = file.originalDataUrl || "";
+  const hasOriginal = originalSrc.length > 0;
 
   center.innerHTML = `
     <div class="preview-area">
       <div class="preview-panel">
         <div class="label">Before</div>
-        <div class="frame"><img src="${originalSrc}" alt="original" /></div>
+        <div class="frame">
+          ${hasOriginal ? `<img src="${originalSrc}" alt="original" />` : '<div class="spinner"></div>'}
+        </div>
       </div>
       <div class="preview-panel">
         <div class="label">After</div>
@@ -172,7 +171,7 @@ function renderPreview() {
             ? `<img src="${file.imageDataUrl}" alt="processed" />`
             : state.processing
               ? '<div style="display:flex;align-items:center;gap:8px"><div class="spinner"></div> Processing...</div>'
-              : '<div class="empty-state"><div class="hint">Click "Process" to strip AI metadata</div></div>'}
+              : '<div class="empty-state"><div class="hint">Click Process to strip AI metadata</div></div>'}
         </div>
       </div>
     </div>
@@ -230,58 +229,62 @@ async function pickFiles() {
       filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "bmp", "tiff", "tif"] }],
     });
     if (!selected) return;
-    const paths = Array.isArray(selected) ? selected : [selected];
-    await addFiles(paths);
+    const paths: string[] = Array.isArray(selected) ? selected : [selected];
+    if (paths.length > 0) {
+      await addFiles(paths);
+    }
   } catch (e) {
     console.error("File picker error:", e);
+    alert("Failed to open file picker: " + e);
   }
-}
-
-function handleDropped(e: DragEvent) {
-  const files = e.dataTransfer?.files;
-  if (!files) return;
-  const paths = Array.from(files).map(f => (f as File & { path?: string }).path || f.name).filter(Boolean);
-  if (paths.length > 0) addFiles(paths);
 }
 
 async function addFiles(paths: string[]) {
   for (const p of paths) {
     const name = p.split("/").pop() || p;
-    state.files.push({ path: p, name, report: null, processed: false, outputPath: null, imageDataUrl: null, originalDataUrl: null });
+    state.files.push({
+      path: p,
+      name,
+      report: null,
+      processed: false,
+      outputPath: null,
+      imageDataUrl: null,
+      originalDataUrl: null,
+    });
   }
   if (state.activeIndex < 0) state.activeIndex = 0;
   render();
-  await inspectAll();
-  await loadOriginalPreviews();
+  await Promise.all([inspectAll(), loadOriginalPreviews()]);
 }
 
 async function inspectAll() {
-  for (let i = 0; i < state.files.length; i++) {
-    if (state.files[i].report) continue;
+  const promises = state.files.map(async (f, i) => {
+    if (f.report) return;
     try {
-      const report = await invoke<MetadataReport>("inspect_image", { path: state.files[i].path });
-      state.files[i].report = report;
+      f.report = await invoke<MetadataReport>("inspect_image", { path: f.path });
     } catch {
-      state.files[i].report = { findings: [] };
+      f.report = { findings: [] };
     }
-  }
+  });
+  await Promise.all(promises);
   render();
 }
 
 async function loadOriginalPreviews() {
-  for (let i = 0; i < state.files.length; i++) {
-    if (state.files[i].originalDataUrl) continue;
+  const promises = state.files.map(async (f) => {
+    if (f.originalDataUrl) return;
     try {
-      const b64 = await invoke<string>("read_image_as_base64", { path: state.files[i].path });
-      const ext = state.files[i].path.toLowerCase();
+      const b64 = await invoke<string>("read_image_as_base64", { path: f.path });
+      const ext = f.path.toLowerCase();
       const mime = ext.endsWith(".jpg") || ext.endsWith(".jpeg") ? "image/jpeg"
         : ext.endsWith(".webp") ? "image/webp"
         : "image/png";
-      state.files[i].originalDataUrl = `data:${mime};base64,${b64}`;
-    } catch {
-      // fallback: use convertFileSrc
+      f.originalDataUrl = `data:${mime};base64,${b64}`;
+    } catch (e) {
+      console.error("Preview load failed for", f.path, e);
     }
-  }
+  });
+  await Promise.all(promises);
   render();
 }
 
@@ -327,15 +330,14 @@ async function processActive() {
 async function saveSingle(index: number) {
   const file = state.files[index];
   if (!file?.outputPath) return;
-  const name = file.name.replace(/\.[^.]+$/, "") + "-stript.png";
+  const suggestedName = file.name.replace(/\.[^.]+$/, "") + "-stript.png";
   try {
     const dest = await save({
-      defaultPath: name,
+      defaultPath: suggestedName,
       filters: [{ name: "PNG", extensions: ["png"] }],
     });
     if (!dest) return;
     const bytes = await readFile(file.outputPath);
-    const { writeFile } = await import("@tauri-apps/plugin-fs");
     await writeFile(dest, bytes);
   } catch (e) {
     console.error("Save failed:", e);
