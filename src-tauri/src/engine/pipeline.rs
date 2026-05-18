@@ -31,33 +31,44 @@ impl Pipeline {
 
         let mut current = img;
 
-        // Step 1: Resize perturb (breaks spatial watermark alignment)
+        // Stage 1: Resize down then back up
+        // Breaks spatial watermark alignment, Lanczos3 resampling
+        // introduces natural interpolation artifacts
         if self.params.resize_scale < 1.0 {
             current = Self::resize_perturb(&current, self.params.resize_scale);
         }
 
-        // Step 2: JPEG round-trip (breaks frequency-domain watermarks)
+        // Stage 2: JPEG round-trip at moderate quality
+        // This is the strongest single countermeasure:
+        // - DCT quantization destroys frequency-domain watermarks
+        // - 8x8 block boundaries disrupt spatial patterns
+        // - Chroma subsampling breaks cross-channel correlation
         if self.params.jpeg_quality < 100 {
-            current = Self::jpeg_roundtrip_img(&current, self.params.jpeg_quality)?;
+            current = Self::jpeg_roundtrip(&current, self.params.jpeg_quality)?;
         }
 
-        // Step 3: Second resize perturb (small, breaks watermark after JPEG)
+        // Stage 3: Second subtle resize perturbation
+        // After JPEG introduced block artifacts, resize again to smooth
+        // and break any watermark that survived JPEG
         if self.params.resize_scale < 1.0 {
-            current = Self::resize_perturb(&current, (self.params.resize_scale + 1.0) / 2.0);
+            let mid_scale = (self.params.resize_scale + 1.0) / 2.0;
+            current = Self::resize_perturb(&current, mid_scale);
         }
 
-        // Step 4: Noise injection (disrupts statistical watermark patterns)
+        // Stage 4: Noise injection with natural distribution
+        // Gaussian-like noise approximated by sum of uniform randoms
+        // Only applied to a fraction of pixels, maintaining statistical normality
         if self.params.noise_fraction > 0.0 {
-            Self::inject_noise(&mut current, self.params.noise_fraction, self.params.noise_strength);
+            Self::inject_natural_noise(&mut current, self.params.noise_fraction, self.params.noise_strength);
         }
 
-        // Step 5: Pixel value quantization (defeats LSB-based watermarks)
-        Self::quantize_pixels(&mut current, 2);
+        // Stage 5: LSB randomization
+        // Instead of quantizing to even (detectable!), randomize LSBs
+        // This ensures LSB distribution is ~50/50 (natural) while destroying
+        // any LSB-encoded watermark
+        Self::randomize_lsbs(&mut current);
 
-        // Step 6: Channel shuffle perturbation (breaks cross-channel watermark correlation)
-        Self::channel_perturb(&mut current, 0.005);
-
-        // Step 7: Final encode as clean PNG (strips all metadata containers)
+        // Stage 6: Encode as clean PNG with no metadata
         Self::encode_clean_png(&current)
     }
 
@@ -83,56 +94,53 @@ impl Pipeline {
         small.resize_exact(w, h, image::imageops::FilterType::Lanczos3)
     }
 
-    fn inject_noise(img: &mut DynamicImage, fraction: f64, strength: u8) {
+    /// Natural noise injection: approximates Gaussian noise by summing 3 uniform randoms.
+    /// Preserves statistical normality of the image.
+    fn inject_natural_noise(img: &mut DynamicImage, fraction: f64, strength: u8) {
         let mut rng = rand::rng();
         let (w, h) = img.dimensions();
-        let strength_i = strength as i16;
+        let s = strength as i32;
 
         for y in 0..h {
             for x in 0..w {
                 if rng.random::<f64>() >= fraction { continue; }
                 let Rgba([r, g, b, a]) = img.get_pixel(x, y);
-                let dr: i16 = rng.random_range(-strength_i..=strength_i);
-                let dg: i16 = rng.random_range(-strength_i..=strength_i);
-                let db: i16 = rng.random_range(-strength_i..=strength_i);
-                let nr = (r as i16 + dr).clamp(0, 255) as u8;
-                let ng = (g as i16 + dg).clamp(0, 255) as u8;
-                let nb = (b as i16 + db).clamp(0, 255) as u8;
+
+                // Approximate Gaussian via sum of 3 uniform [-s, s]
+                let dr: i32 = (rng.random_range(-s..=s) + rng.random_range(-s..=s) + rng.random_range(-s..=s)) / 3;
+                let dg: i32 = (rng.random_range(-s..=s) + rng.random_range(-s..=s) + rng.random_range(-s..=s)) / 3;
+                let db: i32 = (rng.random_range(-s..=s) + rng.random_range(-s..=s) + rng.random_range(-s..=s)) / 3;
+
+                let nr = (r as i32 + dr).clamp(0, 255) as u8;
+                let ng = (g as i32 + dg).clamp(0, 255) as u8;
+                let nb = (b as i32 + db).clamp(0, 255) as u8;
                 img.put_pixel(x, y, Rgba([nr, ng, nb, a]));
             }
         }
     }
 
-    fn quantize_pixels(img: &mut DynamicImage, step: u8) {
-        let (w, h) = img.dimensions();
-        let half = step / 2;
-        for y in 0..h {
-            for x in 0..w {
-                let Rgba([r, g, b, a]) = img.get_pixel(x, y);
-                let qr = ((r / step) * step + half).min(255);
-                let qg = ((g / step) * step + half).min(255);
-                let qb = ((b / step) * step + half).min(255);
-                img.put_pixel(x, y, Rgba([qr, qg, qb, a]));
-            }
-        }
-    }
-
-    fn channel_perturb(img: &mut DynamicImage, fraction: f64) {
+    /// Randomize all LSBs across all color channels.
+    /// Destroys any LSB-encoded watermark while keeping the distribution
+    /// statistically indistinguishable from natural images (~50% even, ~50% odd).
+    fn randomize_lsbs(img: &mut DynamicImage) {
         let mut rng = rand::rng();
         let (w, h) = img.dimensions();
+
         for y in 0..h {
             for x in 0..w {
-                if rng.random::<f64>() >= fraction { continue; }
                 let Rgba([r, g, b, a]) = img.get_pixel(x, y);
-                let shift: i16 = rng.random_range(-2..=2);
-                let nr = (r as i16 + shift).clamp(0, 255) as u8;
-                let ng = (g as i16 - shift).clamp(0, 255) as u8;
-                img.put_pixel(x, y, Rgba([nr, ng, b, a]));
+                let bit: u8 = if rng.random::<f64>() < 0.5 { 0 } else { 1 };
+                let bit2: u8 = if rng.random::<f64>() < 0.5 { 0 } else { 1 };
+                let bit3: u8 = if rng.random::<f64>() < 0.5 { 0 } else { 1 };
+                let nr = (r & 0xFE) | bit;
+                let ng = (g & 0xFE) | bit2;
+                let nb = (b & 0xFE) | bit3;
+                img.put_pixel(x, y, Rgba([nr, ng, nb, a]));
             }
         }
     }
 
-    fn jpeg_roundtrip_img(img: &DynamicImage, quality: u8) -> Result<DynamicImage, String> {
+    fn jpeg_roundtrip(img: &DynamicImage, quality: u8) -> Result<DynamicImage, String> {
         let mut jpeg_buf = std::io::Cursor::new(Vec::new());
         let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_buf, quality);
         img.write_with_encoder(encoder)
