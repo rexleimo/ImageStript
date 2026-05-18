@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { readFile } from "@tauri-apps/plugin-fs";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import type { MetadataReport, ProcessParams, ProcessResponse, BatchResponse, Preset } from "./types";
 import { PRESET_PARAMS } from "./types";
 
@@ -8,7 +10,9 @@ interface FileEntry {
   name: string;
   report: MetadataReport | null;
   processed: boolean;
-  outputBytes: string | null;
+  outputPath: string | null;
+  imageDataUrl: string | null;
+  originalDataUrl: string | null;
 }
 
 const state = {
@@ -23,18 +27,10 @@ const state = {
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 function render() {
-  renderHeader();
   renderFileList();
   renderParams();
   renderPreview();
   renderReport();
-}
-
-function renderHeader() {
-  const clearBtn = $("btn-clear");
-  if (clearBtn) {
-    (clearBtn as HTMLButtonElement).disabled = state.files.length === 0;
-  }
 }
 
 function renderFileList() {
@@ -43,7 +39,7 @@ function renderFileList() {
 
   if (state.files.length === 0) {
     list.innerHTML = `<div class="drop-zone" id="drop-zone">
-      <div class="drop-zone-icon">📁</div>
+      <div class="drop-zone-icon">\u{1F4C1}</div>
       <div class="drop-zone-text">Drop images or click to browse</div>
       <div class="drop-zone-hint">PNG, JPEG, WebP supported</div>
     </div>`;
@@ -64,7 +60,7 @@ function renderFileList() {
         : ""}
       ${f.processed ? '<span class="badge badge-success">Done</span>' : ""}
     </div>
-  `).join("");
+  `).join("") + `<button class="btn-ghost" id="add-more" style="margin-top:8px;width:100%">+ Add more</button>`;
 
   list.querySelectorAll(".file-item").forEach((el) => {
     el.addEventListener("click", () => {
@@ -72,6 +68,8 @@ function renderFileList() {
       render();
     });
   });
+
+  $("add-more")?.addEventListener("click", pickFiles);
 }
 
 function renderParams() {
@@ -87,7 +85,7 @@ function renderParams() {
       `).join("")}
     </div>
     <div style="margin-top:14px">
-      <button class="btn-ghost" id="toggle-advanced">${state.advancedOpen ? "▾ Hide parameters" : "▸ Advanced parameters"}</button>
+      <button class="btn-ghost" id="toggle-advanced">${state.advancedOpen ? "\u25BE Hide parameters" : "\u25B8 Advanced parameters"}</button>
     </div>
     ${state.advancedOpen ? `
     <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
@@ -123,8 +121,7 @@ function renderParams() {
     });
   });
 
-  const toggleBtn = $("toggle-advanced");
-  toggleBtn?.addEventListener("click", () => {
+  $("toggle-advanced")?.addEventListener("click", () => {
     state.advancedOpen = !state.advancedOpen;
     render();
   });
@@ -150,7 +147,7 @@ function renderPreview() {
 
   if (state.files.length === 0) {
     center.innerHTML = `<div class="empty-state">
-      <div class="icon">🖼️</div>
+      <div class="icon">\u{1F5BC}\u{FE0F}</div>
       <div class="title">No image selected</div>
       <div class="hint">Add images from the left panel</div>
     </div>`;
@@ -160,39 +157,49 @@ function renderPreview() {
   const file = state.files[state.activeIndex];
   if (!file) return;
 
-  const processedSrc = file.processed
-    ? `stript://localhost/converted/${encodeURIComponent(file.outputBytes || "")}`
-    : "";
+  const originalSrc = file.originalDataUrl || convertFileSrc(file.path);
 
   center.innerHTML = `
     <div class="preview-area">
       <div class="preview-panel">
         <div class="label">Before</div>
-        <div class="frame"><img src="file://${file.path}" alt="original" /></div>
+        <div class="frame"><img src="${originalSrc}" alt="original" /></div>
       </div>
       <div class="preview-panel">
         <div class="label">After</div>
         <div class="frame">
-          ${file.processed
-            ? `<img src="${processedSrc}" alt="processed" />`
+          ${file.processed && file.imageDataUrl
+            ? `<img src="${file.imageDataUrl}" alt="processed" />`
             : state.processing
-              ? '<div class="spinner"></div>'
-              : '<div class="empty-state"><div class="hint">Click "Process" to clean</div></div>'}
+              ? '<div style="display:flex;align-items:center;gap:8px"><div class="spinner"></div> Processing...</div>'
+              : '<div class="empty-state"><div class="hint">Click "Process" to strip AI metadata</div></div>'}
         </div>
       </div>
     </div>
     <div class="action-row">
       <button class="btn btn-primary" id="btn-process" ${state.processing ? "disabled" : ""}>
-        ${state.processing ? "Processing…" : `Process ${state.files.length > 1 ? `All (${state.files.length})` : ""}`}
+        ${state.processing ? "Processing\u2026" : `Process${state.files.length > 1 ? ` All (${state.files.length})` : ""}`}
       </button>
-      <button class="btn btn-outline" id="btn-save" ${!file.processed ? "disabled" : ""}>Save</button>
-      <button class="btn btn-outline" id="btn-save-all" ${state.files.every(f => !f.processed) ? "disabled" : ""}>Save All</button>
+      <button class="btn btn-outline" id="btn-save" disabled>Save</button>
+      <button class="btn btn-outline" id="btn-save-all" disabled>Save All</button>
     </div>
   `;
 
   $("btn-process")?.addEventListener("click", processActive);
-  $("btn-save")?.addEventListener("click", () => saveSingle(state.activeIndex));
-  $("btn-save-all")?.addEventListener("click", saveAll);
+
+  const btnSave = $("btn-save") as HTMLButtonElement;
+  const btnSaveAll = $("btn-save-all") as HTMLButtonElement;
+
+  if (file.processed && file.outputPath) {
+    btnSave.disabled = false;
+    btnSave.addEventListener("click", () => saveSingle(state.activeIndex));
+  }
+
+  const hasAnyProcessed = state.files.some(f => f.processed && f.outputPath);
+  if (hasAnyProcessed) {
+    btnSaveAll.disabled = false;
+    btnSaveAll.addEventListener("click", saveAll);
+  }
 }
 
 function renderReport() {
@@ -205,51 +212,74 @@ function renderReport() {
   const r = file.report;
   el.innerHTML = `
     <div class="report-card ${r.findings.length > 0 ? "warn" : "safe"}">
-      <div class="title">${r.findings.length > 0 ? "⚠ AI metadata detected" : "✓ No AI metadata"}</div>
+      <div class="title">${r.findings.length > 0 ? "\u26A0 AI metadata detected" : "\u2713 No AI metadata"}</div>
       <div class="detail">
         ${r.findings.length > 0
-          ? r.findings.slice(0, 4).map(f => `<div>${f.container}: ${f.signal} — ${f.detail}</div>`).join("")
+          ? r.findings.slice(0, 6).map(f => `<div>${f.container}: ${f.signal} \u2014 ${f.detail}</div>`).join("")
           : "No embedded AI metadata signatures found."}
-        ${r.findings.length > 4 ? `<div>…and ${r.findings.length - 4} more</div>` : ""}
+        ${r.findings.length > 6 ? `<div>\u2026and ${r.findings.length - 6} more</div>` : ""}
       </div>
     </div>
   `;
 }
 
 async function pickFiles() {
-  const selected = await open({
-    multiple: true,
-    filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "bmp", "tiff", "tif"] }],
-  });
-  if (!selected) return;
-  const paths = Array.isArray(selected) ? selected : [selected];
-  addFiles(paths);
+  try {
+    const selected = await open({
+      multiple: true,
+      filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "bmp", "tiff", "tif"] }],
+    });
+    if (!selected) return;
+    const paths = Array.isArray(selected) ? selected : [selected];
+    await addFiles(paths);
+  } catch (e) {
+    console.error("File picker error:", e);
+  }
 }
 
 function handleDropped(e: DragEvent) {
   const files = e.dataTransfer?.files;
   if (!files) return;
-  const paths = Array.from(files).map(f => f.path || f.name);
-  addFiles(paths);
+  const paths = Array.from(files).map(f => (f as File & { path?: string }).path || f.name).filter(Boolean);
+  if (paths.length > 0) addFiles(paths);
 }
 
-function addFiles(paths: string[]) {
+async function addFiles(paths: string[]) {
   for (const p of paths) {
     const name = p.split("/").pop() || p;
-    state.files.push({ path: p, name, report: null, processed: false, outputBytes: null });
+    state.files.push({ path: p, name, report: null, processed: false, outputPath: null, imageDataUrl: null, originalDataUrl: null });
   }
   if (state.activeIndex < 0) state.activeIndex = 0;
   render();
-  inspectAll();
+  await inspectAll();
+  await loadOriginalPreviews();
 }
 
 async function inspectAll() {
   for (let i = 0; i < state.files.length; i++) {
+    if (state.files[i].report) continue;
     try {
       const report = await invoke<MetadataReport>("inspect_image", { path: state.files[i].path });
       state.files[i].report = report;
     } catch {
       state.files[i].report = { findings: [] };
+    }
+  }
+  render();
+}
+
+async function loadOriginalPreviews() {
+  for (let i = 0; i < state.files.length; i++) {
+    if (state.files[i].originalDataUrl) continue;
+    try {
+      const b64 = await invoke<string>("read_image_as_base64", { path: state.files[i].path });
+      const ext = state.files[i].path.toLowerCase();
+      const mime = ext.endsWith(".jpg") || ext.endsWith(".jpeg") ? "image/jpeg"
+        : ext.endsWith(".webp") ? "image/webp"
+        : "image/png";
+      state.files[i].originalDataUrl = `data:${mime};base64,${b64}`;
+    } catch {
+      // fallback: use convertFileSrc
     }
   }
   render();
@@ -266,7 +296,8 @@ async function processActive() {
         params: state.params,
       });
       state.files[0].processed = true;
-      state.files[0].outputBytes = result.output_path;
+      state.files[0].outputPath = result.output_path;
+      state.files[0].imageDataUrl = `data:image/png;base64,${result.image_data}`;
       state.files[0].report = result.report;
     } else {
       const paths = state.files.map(f => f.path);
@@ -277,12 +308,16 @@ async function processActive() {
       for (let i = 0; i < result.results.length; i++) {
         const r = result.results[i];
         state.files[i].processed = r.error === null;
-        state.files[i].outputBytes = r.output_path;
+        state.files[i].outputPath = r.output_path;
         state.files[i].report = r.report;
+        if (r.image_data) {
+          state.files[i].imageDataUrl = `data:image/png;base64,${r.image_data}`;
+        }
       }
     }
   } catch (e) {
     console.error("Process failed:", e);
+    alert("Process failed: " + e);
   }
 
   state.processing = false;
@@ -291,19 +326,25 @@ async function processActive() {
 
 async function saveSingle(index: number) {
   const file = state.files[index];
-  if (!file?.outputBytes) return;
-  const outPath = file.outputBytes;
-  const name = outPath.split("/").pop() || "stript-output.png";
+  if (!file?.outputPath) return;
+  const name = file.name.replace(/\.[^.]+$/, "") + "-stript.png";
   try {
-    await invoke("save_file_dialog", { path: outPath, name });
-  } catch {
-    // user cancelled
+    const dest = await save({
+      defaultPath: name,
+      filters: [{ name: "PNG", extensions: ["png"] }],
+    });
+    if (!dest) return;
+    const bytes = await readFile(file.outputPath);
+    const { writeFile } = await import("@tauri-apps/plugin-fs");
+    await writeFile(dest, bytes);
+  } catch (e) {
+    console.error("Save failed:", e);
   }
 }
 
 async function saveAll() {
   for (let i = 0; i < state.files.length; i++) {
-    if (state.files[i].processed) {
+    if (state.files[i].processed && state.files[i].outputPath) {
       await saveSingle(i);
     }
   }

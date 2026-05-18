@@ -10,6 +10,7 @@ pub fn run() {
             commands::inspect_image,
             commands::process_image,
             commands::process_batch,
+            commands::read_image_as_base64,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

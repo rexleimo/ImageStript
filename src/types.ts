@@ -19,11 +19,13 @@ export interface ProcessParams {
 export interface ProcessResponse {
   output_path: string;
   report: MetadataReport;
+  image_data: string;
 }
 
 export interface BatchItemResult {
   path: string;
   output_path: string | null;
+  image_data: string | null;
   report: MetadataReport | null;
   error: string | null;
 }
