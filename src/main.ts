@@ -1,12 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { writeFile, readFile } from "@tauri-apps/plugin-fs";
-import type { MetadataReport, ProcessParams, ProcessResponse, BatchResponse, Preset } from "./types";
+import type { MetadataReport, ProcessParams, ProcessResponse, BatchResponse, Preset, ImageEntry } from "./types";
 import { PRESET_PARAMS } from "./types";
 
 interface FileEntry {
   path: string;
   name: string;
+  source: string;
   report: MetadataReport | null;
   processed: boolean;
   outputPath: string | null;
@@ -40,7 +41,7 @@ function renderFileList() {
     list.innerHTML = `<div class="drop-zone" id="drop-zone">
       <div class="drop-zone-icon">\u{1F4C1}</div>
       <div class="drop-zone-text">Click to browse images</div>
-      <div class="drop-zone-hint">PNG, JPEG, WebP</div>
+      <div class="drop-zone-hint">PNG, JPEG, WebP, ZIP</div>
     </div>`;
     const dz = $("drop-zone");
     dz?.addEventListener("click", pickFiles);
@@ -49,6 +50,7 @@ function renderFileList() {
 
   list.innerHTML = state.files.map((f, i) => `
     <div class="file-item ${i === state.activeIndex ? "active" : ""}" data-index="${i}">
+      ${f.source === "zip" ? '<span style="opacity:0.5">\u{1F4E6}</span>' : ""}
       <span class="name">${f.name}</span>
       ${f.report ? (f.report.findings.length > 0
         ? '<span class="badge badge-warning">AI</span>'
@@ -145,7 +147,7 @@ function renderPreview() {
     center.innerHTML = `<div class="empty-state">
       <div class="icon">\u{1F5BC}\u{FE0F}</div>
       <div class="title">No image selected</div>
-      <div class="hint">Add images from the left panel</div>
+      <div class="hint">Add images or ZIP archives</div>
     </div>`;
     return;
   }
@@ -226,7 +228,7 @@ async function pickFiles() {
   try {
     const selected = await open({
       multiple: true,
-      filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "bmp", "tiff", "tif"] }],
+      filters: [{ name: "Images & Archives", extensions: ["png", "jpg", "jpeg", "webp", "bmp", "tiff", "tif", "zip"] }],
     });
     if (!selected) return;
     const paths: string[] = Array.isArray(selected) ? selected : [selected];
@@ -240,19 +242,38 @@ async function pickFiles() {
 }
 
 async function addFiles(paths: string[]) {
-  for (const p of paths) {
-    const name = p.split("/").pop() || p;
-    state.files.push({
-      path: p,
-      name,
-      report: null,
-      processed: false,
-      outputPath: null,
-      imageDataUrl: null,
-      originalDataUrl: null,
-    });
+  try {
+    const entries = await invoke<ImageEntry[]>("scan_paths", { paths });
+    for (const entry of entries) {
+      if (state.files.some(f => f.path === entry.path)) continue;
+      state.files.push({
+        path: entry.path,
+        name: entry.name,
+        source: entry.source,
+        report: null,
+        processed: false,
+        outputPath: null,
+        imageDataUrl: null,
+        originalDataUrl: null,
+      });
+    }
+  } catch (e) {
+    console.error("Scan failed:", e);
+    for (const p of paths) {
+      const name = p.split("/").pop() || p;
+      state.files.push({
+        path: p,
+        name,
+        source: "file",
+        report: null,
+        processed: false,
+        outputPath: null,
+        imageDataUrl: null,
+        originalDataUrl: null,
+      });
+    }
   }
-  if (state.activeIndex < 0) state.activeIndex = 0;
+  if (state.activeIndex < 0 && state.files.length > 0) state.activeIndex = 0;
   render();
   await Promise.all([inspectAll(), loadOriginalPreviews()]);
 }

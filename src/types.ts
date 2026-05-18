@@ -34,6 +34,14 @@ export interface BatchResponse {
   results: BatchItemResult[];
 }
 
+export interface ImageEntry {
+  name: string;
+  path: string;
+  source: string;
+  report: MetadataReport | null;
+  size: number;
+}
+
 export type Preset = "Subtle" | "Standard" | "Aggressive";
 
 export const PRESET_PARAMS: Record<Preset, ProcessParams> = {
