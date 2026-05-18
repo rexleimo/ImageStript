@@ -1,0 +1,173 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-gui:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            label: macos-arm64
+            artifact: ImageStript-macos-arm64
+          - os: macos-13
+            target: x86_64-apple-darwin
+            label: macos-x64
+            artifact: ImageStript-macos-x64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            label: windows-x64
+            artifact: ImageStript-windows-x64
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            label: linux-x64
+            artifact: ImageStript-linux-x64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "ImageStript ${{ github.ref_name }}"
+          releaseBody: "AI image metadata stripper and watermark removal tool."
+          releaseDraft: false
+          prerelease: false
+          args: --target ${{ matrix.target }}
+
+      - name: Rename and prepare artifact (macOS/Linux)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist-artifacts
+          if [ "${{ matrix.os }}" = "macos-latest" ] || [ "${{ matrix.os }}" = "macos-13" ]; then
+            # tauri-action produces .dmg or .app, find the bundle
+            BUNDLE=$(find target/${{ matrix.target }}/release/bundle -name "*.dmg" -o -name "*.app" | head -1)
+            if [ -n "$BUNDLE" ]; then
+              BASENAME=$(basename "$BUNDLE")
+              cp "$BUNDLE" "dist-artifacts/${{ matrix.artifact }}.${BASENAME##*.}"
+            fi
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            target/${{ matrix.target }}/release/bundle/
+
+  build-cli:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: stript-cli-macos-arm64
+          - os: macos-13
+            target: x86_64-apple-darwin
+            artifact: stript-cli-macos-x64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: stript-cli-windows-x64
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            artifact: stript-cli-linux-x64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+
+      - name: Build CLI binary
+        run: cargo build --release --bin stript-cli --target ${{ matrix.target }}
+
+      - name: Package (macOS/Linux)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist-cli
+          cp target/${{ matrix.target }}/release/stript-cli dist-cli/${{ matrix.artifact }}
+          tar -czf dist-cli/${{ matrix.artifact }}.tar.gz -C dist-cli ${{ matrix.artifact }}
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir dist-cli
+          cp target/${{ matrix.target }}/release/stript-cli.exe dist-cli/${{ matrix.artifact }}.exe
+
+      - name: Upload CLI artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist-cli/
+
+  release:
+    needs: [build-gui, build-cli]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd all-artifacts
+          find . -type f \( -name "*.tar.gz" -o -name "*.exe" -o -name "*.dmg" -o -name "*.msi" -o -name "*.deb" -o -name "*.AppImage" \) -exec sha256sum {} \; > ../SHA256SUMS
+          mv ../SHA256SUMS .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "ImageStript ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            all-artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
