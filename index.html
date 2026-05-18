@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ImageStript</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <h1>Image<span>Stript</span></h1>
+        <div class="header-actions">
+          <button class="btn-ghost" id="btn-add">+ Add</button>
+          <button class="btn-ghost" id="btn-clear">Clear</button>
+        </div>
+      </header>
+      <div class="app-body">
+        <div class="panel panel-left">
+          <div id="file-list"></div>
+          <div id="params"></div>
+        </div>
+        <div class="panel panel-center" id="panel-center">
+          <div class="empty-state">
+            <div class="icon">🖼️</div>
+            <div class="title">No image selected</div>
+            <div class="hint">Drop images or click + Add</div>
+          </div>
+        </div>
+      </div>
+      <div id="report" style="padding: 0 20px 16px;"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
