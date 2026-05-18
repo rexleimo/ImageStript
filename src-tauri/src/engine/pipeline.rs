@@ -26,24 +26,39 @@ impl Pipeline {
     }
 
     pub fn process(&self, input_bytes: &[u8]) -> Result<Vec<u8>, String> {
-        let mut img = image::load_from_memory(input_bytes)
+        let img = image::load_from_memory(input_bytes)
             .map_err(|e| format!("Failed to decode image: {e}"))?;
 
+        let mut current = img;
+
+        // Step 1: Resize perturb (breaks spatial watermark alignment)
         if self.params.resize_scale < 1.0 {
-            img = Self::resize_perturb(&img, self.params.resize_scale);
+            current = Self::resize_perturb(&current, self.params.resize_scale);
         }
 
+        // Step 2: JPEG round-trip (breaks frequency-domain watermarks)
+        if self.params.jpeg_quality < 100 {
+            current = Self::jpeg_roundtrip_img(&current, self.params.jpeg_quality)?;
+        }
+
+        // Step 3: Second resize perturb (small, breaks watermark after JPEG)
+        if self.params.resize_scale < 1.0 {
+            current = Self::resize_perturb(&current, (self.params.resize_scale + 1.0) / 2.0);
+        }
+
+        // Step 4: Noise injection (disrupts statistical watermark patterns)
         if self.params.noise_fraction > 0.0 {
-            Self::inject_noise(&mut img, self.params.noise_fraction, self.params.noise_strength);
+            Self::inject_noise(&mut current, self.params.noise_fraction, self.params.noise_strength);
         }
 
-        let output = if self.params.jpeg_quality < 100 {
-            Self::jpeg_roundtrip(&img, self.params.jpeg_quality)?
-        } else {
-            Self::encode_clean_png(&img)?
-        };
+        // Step 5: Pixel value quantization (defeats LSB-based watermarks)
+        Self::quantize_pixels(&mut current, 2);
 
-        Ok(output)
+        // Step 6: Channel shuffle perturbation (breaks cross-channel watermark correlation)
+        Self::channel_perturb(&mut current, 0.005);
+
+        // Step 7: Final encode as clean PNG (strips all metadata containers)
+        Self::encode_clean_png(&current)
     }
 
     pub fn process_with_report(&self, input_bytes: &[u8]) -> Result<ProcessResult, String> {
@@ -88,16 +103,43 @@ impl Pipeline {
         }
     }
 
-    fn jpeg_roundtrip(img: &DynamicImage, quality: u8) -> Result<Vec<u8>, String> {
+    fn quantize_pixels(img: &mut DynamicImage, step: u8) {
+        let (w, h) = img.dimensions();
+        let half = step / 2;
+        for y in 0..h {
+            for x in 0..w {
+                let Rgba([r, g, b, a]) = img.get_pixel(x, y);
+                let qr = ((r / step) * step + half).min(255);
+                let qg = ((g / step) * step + half).min(255);
+                let qb = ((b / step) * step + half).min(255);
+                img.put_pixel(x, y, Rgba([qr, qg, qb, a]));
+            }
+        }
+    }
+
+    fn channel_perturb(img: &mut DynamicImage, fraction: f64) {
+        let mut rng = rand::rng();
+        let (w, h) = img.dimensions();
+        for y in 0..h {
+            for x in 0..w {
+                if rng.random::<f64>() >= fraction { continue; }
+                let Rgba([r, g, b, a]) = img.get_pixel(x, y);
+                let shift: i16 = rng.random_range(-2..=2);
+                let nr = (r as i16 + shift).clamp(0, 255) as u8;
+                let ng = (g as i16 - shift).clamp(0, 255) as u8;
+                img.put_pixel(x, y, Rgba([nr, ng, b, a]));
+            }
+        }
+    }
+
+    fn jpeg_roundtrip_img(img: &DynamicImage, quality: u8) -> Result<DynamicImage, String> {
         let mut jpeg_buf = std::io::Cursor::new(Vec::new());
         let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_buf, quality);
         img.write_with_encoder(encoder)
             .map_err(|e| format!("Failed to encode JPEG: {e}"))?;
 
         let jpeg_bytes = jpeg_buf.into_inner();
-        let redecoded = image::load_from_memory_with_format(&jpeg_bytes, ImageFormat::Jpeg)
-            .map_err(|e| format!("Failed to re-decode JPEG: {e}"))?;
-
-        Self::encode_clean_png(&redecoded)
+        image::load_from_memory_with_format(&jpeg_bytes, ImageFormat::Jpeg)
+            .map_err(|e| format!("Failed to re-decode JPEG: {e}"))
     }
 }

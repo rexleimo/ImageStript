@@ -15,16 +15,16 @@ struct Cli {
     #[arg(short, long, help = "Output directory")]
     output: Option<String>,
 
-    #[arg(long, default_value = "0.03", help = "Noise fraction (0.0-1.0)")]
+    #[arg(long, default_value = "0.04", help = "Noise fraction (0.0-1.0)")]
     noise: f64,
 
-    #[arg(long, default_value_t = 1, help = "Noise strength")]
+    #[arg(long, default_value_t = 2, help = "Noise strength")]
     strength: u8,
 
-    #[arg(long, default_value = "0.998", help = "Resize perturbation scale")]
+    #[arg(long, default_value = "0.993", help = "Resize perturbation scale")]
     resize: f64,
 
-    #[arg(long, default_value_t = 97, help = "JPEG re-encode quality (0-100)")]
+    #[arg(long, default_value_t = 90, help = "JPEG re-encode quality (0-100)")]
     jpeg: u8,
 
     #[arg(long, help = "Use aggressive preset")]

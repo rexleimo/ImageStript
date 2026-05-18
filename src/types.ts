@@ -45,7 +45,7 @@ export interface ImageEntry {
 export type Preset = "Subtle" | "Standard" | "Aggressive";
 
 export const PRESET_PARAMS: Record<Preset, ProcessParams> = {
-  Subtle: { noise_fraction: 0.01, noise_strength: 1, resize_scale: 0.999, jpeg_quality: 99 },
-  Standard: { noise_fraction: 0.03, noise_strength: 1, resize_scale: 0.998, jpeg_quality: 97 },
-  Aggressive: { noise_fraction: 0.06, noise_strength: 2, resize_scale: 0.995, jpeg_quality: 92 },
+  Subtle: { noise_fraction: 0.01, noise_strength: 1, resize_scale: 0.997, jpeg_quality: 95 },
+  Standard: { noise_fraction: 0.04, noise_strength: 2, resize_scale: 0.993, jpeg_quality: 90 },
+  Aggressive: { noise_fraction: 0.08, noise_strength: 3, resize_scale: 0.985, jpeg_quality: 82 },
 };
