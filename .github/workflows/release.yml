@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build-gui:
+  build:
     strategy:
       fail-fast: false
       matrix:
@@ -17,19 +17,15 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             label: macos-arm64
-            artifact: ImageStript-macos-arm64
           - os: macos-13
             target: x86_64-apple-darwin
             label: macos-x64
-            artifact: ImageStript-macos-x64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             label: windows-x64
-            artifact: ImageStript-windows-x64
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             label: linux-x64
-            artifact: ImageStript-linux-x64
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -66,83 +62,36 @@ jobs:
           prerelease: false
           args: --target ${{ matrix.target }}
 
-      - name: Rename and prepare artifact (macOS/Linux)
-        if: runner.os != 'Windows'
-        run: |
-          mkdir -p dist-artifacts
-          if [ "${{ matrix.os }}" = "macos-latest" ] || [ "${{ matrix.os }}" = "macos-13" ]; then
-            # tauri-action produces .dmg or .app, find the bundle
-            BUNDLE=$(find target/${{ matrix.target }}/release/bundle -name "*.dmg" -o -name "*.app" | head -1)
-            if [ -n "$BUNDLE" ]; then
-              BASENAME=$(basename "$BUNDLE")
-              cp "$BUNDLE" "dist-artifacts/${{ matrix.artifact }}.${BASENAME##*.}"
-            fi
-          fi
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: |
-            target/${{ matrix.target }}/release/bundle/
-
-  build-cli:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact: stript-cli-macos-arm64
-          - os: macos-13
-            target: x86_64-apple-darwin
-            artifact: stript-cli-macos-x64
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact: stript-cli-windows-x64
-          - os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-            artifact: stript-cli-linux-x64
-
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
-
       - name: Build CLI binary
         run: cargo build --release --bin stript-cli --target ${{ matrix.target }}
 
-      - name: Package (macOS/Linux)
+      - name: Package CLI (macOS/Linux)
         if: runner.os != 'Windows'
         run: |
           mkdir -p dist-cli
-          cp target/${{ matrix.target }}/release/stript-cli dist-cli/${{ matrix.artifact }}
-          tar -czf dist-cli/${{ matrix.artifact }}.tar.gz -C dist-cli ${{ matrix.artifact }}
+          cp target/${{ matrix.target }}/release/stript-cli dist-cli/stript-cli-${{ matrix.label }}
+          tar -czf dist-cli/stript-cli-${{ matrix.label }}.tar.gz -C dist-cli stript-cli-${{ matrix.label }}
 
-      - name: Package (Windows)
+      - name: Package CLI (Windows)
         if: runner.os == 'Windows'
         run: |
           mkdir dist-cli
-          cp target/${{ matrix.target }}/release/stript-cli.exe dist-cli/${{ matrix.artifact }}.exe
+          cp target/${{ matrix.target }}/release/stript-cli.exe dist-cli/stript-cli-${{ matrix.label }}.exe
+
+      - name: Upload GUI artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gui-${{ matrix.label }}
+          path: target/${{ matrix.target }}/release/bundle/
 
       - name: Upload CLI artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
+          name: cli-${{ matrix.label }}
           path: dist-cli/
 
   release:
-    needs: [build-gui, build-cli]
+    needs: [build]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -152,6 +101,9 @@ jobs:
         with:
           path: all-artifacts
           merge-multiple: true
+
+      - name: List artifacts
+        run: find all-artifacts -type f | head -30
 
       - name: Generate SHA256SUMS
         run: |
