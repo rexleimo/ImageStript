@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/nicehash/Tauri/dev/crates/tauri-config-schema/schema.json",
   "productName": "ImageStript",
   "version": "1.0.0",
-  "identifier": "com.stript.app",
+  "identifier": "com.stript.imagestript",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",

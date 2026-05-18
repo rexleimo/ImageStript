@@ -279,7 +279,7 @@ async function addFiles(paths: string[]) {
 }
 
 async function inspectAll() {
-  const promises = state.files.map(async (f, i) => {
+  const promises = state.files.map(async (f) => {
     if (f.report) return;
     try {
       f.report = await invoke<MetadataReport>("inspect_image", { path: f.path });
