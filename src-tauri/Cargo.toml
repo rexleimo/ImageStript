@@ -4,13 +4,14 @@ version = "1.0.0"
 description = "Image AI metadata cleaner and perturbation tool"
 authors = ["you"]
 edition = "2021"
+default-run = "stript"
 
 [lib]
 name = "stript_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
-name = "stript"
+name = "stript-cli"
 path = "src/bin/stript.rs"
 
 [build-dependencies]

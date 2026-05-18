@@ -35,10 +35,5 @@
       "icons/128x128@2x.png"
     ]
   },
-  "plugins": {
-    "dialog": {},
-    "fs": {
-      "scope": ["**"]
-    }
-  }
+  "plugins": {}
 }
