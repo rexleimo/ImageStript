@@ -5,30 +5,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ImageStript</title>
     <link rel="stylesheet" href="/src/styles.css" />
+    <script src="https://unpkg.com/lucide@latest"></script>
   </head>
   <body>
     <div id="app">
+      <!-- Header -->
       <header class="app-header">
-        <h1>Image<span>Stript</span></h1>
-        <div class="header-actions">
-          <button class="btn-ghost" id="btn-add">+ Add</button>
-          <button class="btn-ghost" id="btn-clear">Clear</button>
-        </div>
-      </header>
-      <div class="app-body">
-        <div class="panel panel-left">
-          <div id="file-list"></div>
-          <div id="params"></div>
-        </div>
-        <div class="panel panel-center" id="panel-center">
-          <div class="empty-state">
-            <div class="icon">🖼️</div>
-            <div class="title">No image selected</div>
-            <div class="hint">Drop images or click + Add</div>
+        <div class="header-left">
+          <div class="logo">
+            <i data-lucide="shield-check" class="logo-icon"></i>
+            <h1>Image<span>Stript</span></h1>
           </div>
         </div>
+        <div class="header-actions">
+          <div class="locale-dropdown" id="locale-dropdown">
+            <button class="btn-locale">English <i data-lucide="chevron-down" style="width:12px;height:12px"></i></button>
+            <div class="locale-menu">
+              <button class="locale-menu-item" data-locale="en"><span class="locale-check"></span> English</button>
+              <button class="locale-menu-item" data-locale="zh-CN"><span class="locale-check"></span> 简体中文</button>
+              <button class="locale-menu-item" data-locale="zh-TW"><span class="locale-check"></span> 繁體中文</button>
+              <button class="locale-menu-item" data-locale="ja"><span class="locale-check"></span> 日本語</button>
+              <button class="locale-menu-item" data-locale="ko"><span class="locale-check"></span> 한국어</button>
+              <button class="locale-menu-item" data-locale="fr"><span class="locale-check"></span> Français</button>
+              <button class="locale-menu-item" data-locale="de"><span class="locale-check"></span> Deutsch</button>
+              <button class="locale-menu-item" data-locale="es"><span class="locale-check"></span> Español</button>
+              <button class="locale-menu-item" data-locale="pt"><span class="locale-check"></span> Português</button>
+              <button class="locale-menu-item" data-locale="ru"><span class="locale-check"></span> Русский</button>
+            </div>
+          </div>
+          <div class="header-divider"></div>
+          <button class="btn btn-ghost" id="btn-add">
+            <i data-lucide="plus" style="width:15px;height:15px"></i>
+            <span id="label-add">Add</span>
+          </button>
+          <button class="btn btn-ghost btn-danger-ghost" id="btn-clear" title="Clear">
+            <i data-lucide="trash-2" style="width:15px;height:15px"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Workspace -->
+      <div class="app-body">
+        <!-- Left: Thumbnail Strip -->
+        <aside class="panel panel-left" id="panel-left">
+          <div class="panel-header">
+            <span class="panel-title" id="label-files">Files</span>
+            <span class="panel-count" id="file-count">0</span>
+          </div>
+          <div class="thumbnail-list" id="file-list"></div>
+        </aside>
+
+        <!-- Center: Preview Area -->
+        <main class="panel panel-center" id="panel-center"></main>
+
+        <!-- Right: Parameters Panel -->
+        <aside class="panel panel-right" id="panel-right">
+          <div class="panel-header">
+            <span class="panel-title" id="label-settings">Settings</span>
+          </div>
+          <div class="panel-content" id="params"></div>
+          <div class="panel-divider"></div>
+          <div class="panel-content" id="report"></div>
+        </aside>
       </div>
-      <div id="report" style="padding: 0 20px 16px;"></div>
+
+      <!-- Bottom Action Strip -->
+      <div class="action-strip" id="action-strip">
+        <div class="action-strip-left">
+          <span class="status-text" id="status-text">Ready</span>
+        </div>
+        <div class="action-strip-center">
+          <button class="btn btn-primary" id="btn-process">
+            <i data-lucide="zap" style="width:15px;height:15px"></i>
+            <span id="label-process">Process</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-save" disabled>
+            <i data-lucide="save" style="width:15px;height:15px"></i>
+            <span id="label-save">Save</span>
+          </button>
+          <button class="btn btn-secondary" id="btn-save-all" disabled>
+            <i data-lucide="download" style="width:15px;height:15px"></i>
+            <span id="label-save-all">Save All</span>
+          </button>
+        </div>
+        <div class="action-strip-right">
+          <span class="progress-text" id="progress-text"></span>
+        </div>
+      </div>
+
+      <!-- Toast Container -->
+      <div id="toast-container"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

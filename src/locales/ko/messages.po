@@ -1,0 +1,219 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-19 14:10+0800\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: ko\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#. placeholder {0}: r.findings.length - 5
+#: src/main.ts:431
+msgid "{0, plural, one {...and # more} other {...and # more}}"
+msgstr "외 {0}개"
+
+#. placeholder {0}: state.files.length
+#: src/main.ts:454
+msgid "{0, plural, one {# file ready} other {# files ready}}"
+msgstr "{0}개 파일 준비됨"
+
+#. placeholder {0}: paths.length
+#: src/main.ts:538
+msgid "{0, plural, one {Added # file} other {Added # files}}"
+msgstr "{0}개 파일 추가됨"
+
+#. placeholder {0}: state.files.length
+#: src/main.ts:479
+msgid "{0, plural, one {Process} other {Process All (#)}}"
+msgstr "{0, plural, one {처리} other {모두 처리 (#)}}"
+
+#: src/main.ts:604
+msgid "{cnt, plural, one {Processed # image successfully} other {Processed # images successfully}}"
+msgstr "{cnt}개 이미지 처리 완료"
+
+#. placeholder {0}: state.files.length
+#. placeholder {1}: state.files.length
+#: src/main.ts:449
+msgid "{processedCount, plural, one {#/{0} processed} other {#/{1} processed}}"
+msgstr "{processedCount}/{0} 처리됨"
+
+#: src/main.ts:664
+msgid "{saved, plural, one {Saved # file to output directory} other {Saved # files to output directory}}"
+msgstr "{saved}개 파일을 ��력 디렉토리에 저장"
+
+#: src/main.ts:466
+msgid "{selectedCount, plural, one {# selected} other {# selected}}"
+msgstr "{selectedCount}개 선택됨"
+
+#: src/main.ts:80
+msgid "Add"
+msgstr "추가"
+
+#: src/main.ts:196
+msgid "Add more"
+msgstr "더 추가"
+
+#: src/main.ts:245
+msgid "Advanced parameters"
+msgstr "고급 매개변수"
+
+#: src/main.ts:347
+msgid "After"
+msgstr "처리 후"
+
+#: src/main.ts:238
+msgid "Aggressive"
+msgstr "강력"
+
+#: src/main.ts:426
+msgid "AI metadata detected"
+msgstr "AI 메타데이터 감지됨"
+
+#: src/main.ts:709
+msgid "All files cleared"
+msgstr "모든 파일 삭제됨"
+
+#: src/main.ts:670
+msgid "Batch save failed"
+msgstr "일괄 저장 실패"
+
+#: src/main.ts:341
+msgid "Before"
+msgstr "처리 전"
+
+#: src/main.ts:173
+#: src/main.ts:385
+#: src/main.ts:426
+msgid "Clean"
+msgstr "이상 없음"
+
+#: src/main.ts:88
+msgid "Clear"
+msgstr "지우기"
+
+#: src/main.ts:353
+msgid "Click Process to strip AI metadata"
+msgstr "처리를 클릭하여 AI 메타데이터 제거"
+
+#: src/main.ts:148
+msgid "Click to browse"
+msgstr "클릭하여 찾아보기"
+
+#: src/main.ts:188
+msgid "Deselect"
+msgstr "선택 해제"
+
+#: src/main.ts:313
+msgid "Drop images to start"
+msgstr "이미지를 드롭하여 시작"
+
+#: src/main.ts:505
+msgid "Failed to open file picker"
+msgstr "파일 선택기를 열 수 없습니다"
+
+#: src/main.ts:629
+msgid "File saved successfully"
+msgstr "파일 저장 성공"
+
+#: src/main.ts:81
+msgid "Files"
+msgstr "파일"
+
+#: src/main.ts:370
+msgid "Gallery"
+msgstr "갤러리"
+
+#: src/main.ts:498
+msgid "Images & Archives"
+msgstr "이미지 및 아카이브"
+
+#: src/main.ts:266
+msgid "JPEG quality"
+msgstr "JPEG 품질"
+
+#: src/main.ts:430
+msgid "No AI metadata signatures found."
+msgstr "AI 메타데이터 서명이 발견되지 않았습니다."
+
+#: src/main.ts:642
+msgid "No processed files to save"
+msgstr "저장할 처리된 파일이 없습니다"
+
+#: src/main.ts:251
+msgid "Noise fraction"
+msgstr "노이즈 비율"
+
+#: src/main.ts:256
+msgid "Noise strength"
+msgstr "노이즈 강도"
+
+#: src/main.ts:149
+#: src/main.ts:314
+msgid "PNG, JPEG, WebP, ZIP"
+msgstr "PNG, JPEG, WebP, ZIP"
+
+#: src/main.ts:235
+msgid "Preset"
+msgstr "프리셋"
+
+#: src/main.ts:83
+#: src/main.ts:480
+msgid "Process"
+msgstr "처리"
+
+#: src/main.ts:610
+msgid "Processing failed"
+msgstr "처리 실패"
+
+#: src/main.ts:352
+#: src/main.ts:447
+#: src/main.ts:477
+msgid "Processing..."
+msgstr "처리 중..."
+
+#: src/main.ts:91
+#: src/main.ts:459
+msgid "Ready"
+msgstr "준비됨"
+
+#: src/main.ts:261
+msgid "Resize scale"
+msgstr "리사이즈 비율"
+
+#: src/main.ts:84
+msgid "Save"
+msgstr "저장"
+
+#: src/main.ts:85
+msgid "Save All"
+msgstr "모두 저장"
+
+#: src/main.ts:632
+msgid "Save failed"
+msgstr "저장 실패"
+
+#: src/main.ts:652
+msgid "Select output directory"
+msgstr "출력 디렉토리 선택"
+
+#: src/main.ts:185
+msgid "selected"
+msgstr "선택됨"
+
+#: src/main.ts:82
+msgid "Settings"
+msgstr "설정"
+
+#: src/main.ts:238
+msgid "Standard"
+msgstr "표준"
+
+#: src/main.ts:238
+msgid "Subtle"
+msgstr "약하게"

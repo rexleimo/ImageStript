@@ -1,0 +1,219 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-19 14:10+0800\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: zh-TW\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#. placeholder {0}: r.findings.length - 5
+#: src/main.ts:431
+msgid "{0, plural, one {...and # more} other {...and # more}}"
+msgstr "{0, plural, one {...及其他 # 個} other {...及其他 # 個}}"
+
+#. placeholder {0}: state.files.length
+#: src/main.ts:454
+msgid "{0, plural, one {# file ready} other {# files ready}}"
+msgstr "{0, plural, one {# 個檔案就緒} other {# 個檔案就緒}}"
+
+#. placeholder {0}: paths.length
+#: src/main.ts:538
+msgid "{0, plural, one {Added # file} other {Added # files}}"
+msgstr "{0, plural, one {已新增 # 個檔案} other {已新增 # 個檔案}}"
+
+#. placeholder {0}: state.files.length
+#: src/main.ts:479
+msgid "{0, plural, one {Process} other {Process All (#)}}"
+msgstr "{0, plural, one {處理} other {全部處理 (#)}}"
+
+#: src/main.ts:604
+msgid "{cnt, plural, one {Processed # image successfully} other {Processed # images successfully}}"
+msgstr "{cnt, plural, one {已成功處理 # 張圖片} other {已成功處理 # 張圖片}}"
+
+#. placeholder {0}: state.files.length
+#. placeholder {1}: state.files.length
+#: src/main.ts:449
+msgid "{processedCount, plural, one {#/{0} processed} other {#/{1} processed}}"
+msgstr "{processedCount, plural, one {#/{0} 已處理} other {#/{1} 已處理}}"
+
+#: src/main.ts:664
+msgid "{saved, plural, one {Saved # file to output directory} other {Saved # files to output directory}}"
+msgstr "{saved, plural, one {已儲存 # 個檔案至輸出目錄} other {已儲存 # 個檔案至輸出目錄}}"
+
+#: src/main.ts:466
+msgid "{selectedCount, plural, one {# selected} other {# selected}}"
+msgstr "{selectedCount, plural, one {# 個已選取} other {# 個已選取}}"
+
+#: src/main.ts:80
+msgid "Add"
+msgstr "新增"
+
+#: src/main.ts:196
+msgid "Add more"
+msgstr "新增更多"
+
+#: src/main.ts:245
+msgid "Advanced parameters"
+msgstr "進階參數"
+
+#: src/main.ts:347
+msgid "After"
+msgstr "處理後"
+
+#: src/main.ts:238
+msgid "Aggressive"
+msgstr "積極"
+
+#: src/main.ts:426
+msgid "AI metadata detected"
+msgstr "偵測到 AI 中繼資料"
+
+#: src/main.ts:709
+msgid "All files cleared"
+msgstr "已清除所有檔案"
+
+#: src/main.ts:670
+msgid "Batch save failed"
+msgstr "批次儲存失敗"
+
+#: src/main.ts:341
+msgid "Before"
+msgstr "處理前"
+
+#: src/main.ts:173
+#: src/main.ts:385
+#: src/main.ts:426
+msgid "Clean"
+msgstr "清除"
+
+#: src/main.ts:88
+msgid "Clear"
+msgstr "清除"
+
+#: src/main.ts:353
+msgid "Click Process to strip AI metadata"
+msgstr "點擊處理以移除 AI 中繼資料"
+
+#: src/main.ts:148
+msgid "Click to browse"
+msgstr "點擊以瀏覽"
+
+#: src/main.ts:188
+msgid "Deselect"
+msgstr "取消選取"
+
+#: src/main.ts:313
+msgid "Drop images to start"
+msgstr "拖放圖片以開始"
+
+#: src/main.ts:505
+msgid "Failed to open file picker"
+msgstr "無法開啟檔案選擇器"
+
+#: src/main.ts:629
+msgid "File saved successfully"
+msgstr "檔案儲存成功"
+
+#: src/main.ts:81
+msgid "Files"
+msgstr "檔案"
+
+#: src/main.ts:370
+msgid "Gallery"
+msgstr "圖庫"
+
+#: src/main.ts:498
+msgid "Images & Archives"
+msgstr "影像與封存"
+
+#: src/main.ts:266
+msgid "JPEG quality"
+msgstr "JPEG 品質"
+
+#: src/main.ts:430
+msgid "No AI metadata signatures found."
+msgstr "未發現 AI 中繼資料簽章。"
+
+#: src/main.ts:642
+msgid "No processed files to save"
+msgstr "沒有已處理的檔案可儲存"
+
+#: src/main.ts:251
+msgid "Noise fraction"
+msgstr "雜訊比例"
+
+#: src/main.ts:256
+msgid "Noise strength"
+msgstr "雜訊強度"
+
+#: src/main.ts:149
+#: src/main.ts:314
+msgid "PNG, JPEG, WebP, ZIP"
+msgstr "PNG、JPEG、WebP、ZIP"
+
+#: src/main.ts:235
+msgid "Preset"
+msgstr "預設"
+
+#: src/main.ts:83
+#: src/main.ts:480
+msgid "Process"
+msgstr "處理"
+
+#: src/main.ts:610
+msgid "Processing failed"
+msgstr "處理失敗"
+
+#: src/main.ts:352
+#: src/main.ts:447
+#: src/main.ts:477
+msgid "Processing..."
+msgstr "處理中…"
+
+#: src/main.ts:91
+#: src/main.ts:459
+msgid "Ready"
+msgstr "就緒"
+
+#: src/main.ts:261
+msgid "Resize scale"
+msgstr "縮放比例"
+
+#: src/main.ts:84
+msgid "Save"
+msgstr "儲存"
+
+#: src/main.ts:85
+msgid "Save All"
+msgstr "全部儲存"
+
+#: src/main.ts:632
+msgid "Save failed"
+msgstr "儲存失敗"
+
+#: src/main.ts:652
+msgid "Select output directory"
+msgstr "選擇輸出目錄"
+
+#: src/main.ts:185
+msgid "selected"
+msgstr "已選取"
+
+#: src/main.ts:82
+msgid "Settings"
+msgstr "設定"
+
+#: src/main.ts:238
+msgid "Standard"
+msgstr "標準"
+
+#: src/main.ts:238
+msgid "Subtle"
+msgstr "輕微"

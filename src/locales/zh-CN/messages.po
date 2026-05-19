@@ -1,0 +1,219 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-19 14:10+0800\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: zh-CN\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#. placeholder {0}: r.findings.length - 5
+#: src/main.ts:431
+msgid "{0, plural, one {...and # more} other {...and # more}}"
+msgstr "...还有 {0} 项"
+
+#. placeholder {0}: state.files.length
+#: src/main.ts:454
+msgid "{0, plural, one {# file ready} other {# files ready}}"
+msgstr "{0} 个文件就绪"
+
+#. placeholder {0}: paths.length
+#: src/main.ts:538
+msgid "{0, plural, one {Added # file} other {Added # files}}"
+msgstr "已添加 {0} 个文件"
+
+#. placeholder {0}: state.files.length
+#: src/main.ts:479
+msgid "{0, plural, one {Process} other {Process All (#)}}"
+msgstr "{0, plural, one {处理} other {全部处理 (#)}}"
+
+#: src/main.ts:604
+msgid "{cnt, plural, one {Processed # image successfully} other {Processed # images successfully}}"
+msgstr "已成功处理 {cnt} 张图片"
+
+#. placeholder {0}: state.files.length
+#. placeholder {1}: state.files.length
+#: src/main.ts:449
+msgid "{processedCount, plural, one {#/{0} processed} other {#/{1} processed}}"
+msgstr "已处理 {processedCount}/{0}"
+
+#: src/main.ts:664
+msgid "{saved, plural, one {Saved # file to output directory} other {Saved # files to output directory}}"
+msgstr "已保存 {saved} 个文件到输出目录"
+
+#: src/main.ts:466
+msgid "{selectedCount, plural, one {# selected} other {# selected}}"
+msgstr "{selectedCount} 已选"
+
+#: src/main.ts:80
+msgid "Add"
+msgstr "添加"
+
+#: src/main.ts:196
+msgid "Add more"
+msgstr "添加更多"
+
+#: src/main.ts:245
+msgid "Advanced parameters"
+msgstr "高级参数"
+
+#: src/main.ts:347
+msgid "After"
+msgstr "处理后"
+
+#: src/main.ts:238
+msgid "Aggressive"
+msgstr "激进"
+
+#: src/main.ts:426
+msgid "AI metadata detected"
+msgstr "检测到 AI 元数据"
+
+#: src/main.ts:709
+msgid "All files cleared"
+msgstr "已清空所有文件"
+
+#: src/main.ts:670
+msgid "Batch save failed"
+msgstr "批量保存失败"
+
+#: src/main.ts:341
+msgid "Before"
+msgstr "处理前"
+
+#: src/main.ts:173
+#: src/main.ts:385
+#: src/main.ts:426
+msgid "Clean"
+msgstr "无异常"
+
+#: src/main.ts:88
+msgid "Clear"
+msgstr "清空"
+
+#: src/main.ts:353
+msgid "Click Process to strip AI metadata"
+msgstr "点击处理以移除 AI 元数据"
+
+#: src/main.ts:148
+msgid "Click to browse"
+msgstr "点击浏览"
+
+#: src/main.ts:188
+msgid "Deselect"
+msgstr "取消选择"
+
+#: src/main.ts:313
+msgid "Drop images to start"
+msgstr "拖入图片开始"
+
+#: src/main.ts:505
+msgid "Failed to open file picker"
+msgstr "无法打开文件选择器"
+
+#: src/main.ts:629
+msgid "File saved successfully"
+msgstr "文件保存成功"
+
+#: src/main.ts:81
+msgid "Files"
+msgstr "文件"
+
+#: src/main.ts:370
+msgid "Gallery"
+msgstr "图库"
+
+#: src/main.ts:498
+msgid "Images & Archives"
+msgstr "图片与归档"
+
+#: src/main.ts:266
+msgid "JPEG quality"
+msgstr "JPEG 质量"
+
+#: src/main.ts:430
+msgid "No AI metadata signatures found."
+msgstr "未检测到 AI 元数据签名。"
+
+#: src/main.ts:642
+msgid "No processed files to save"
+msgstr "没有可保存的已处理文件"
+
+#: src/main.ts:251
+msgid "Noise fraction"
+msgstr "噪声比例"
+
+#: src/main.ts:256
+msgid "Noise strength"
+msgstr "噪声强度"
+
+#: src/main.ts:149
+#: src/main.ts:314
+msgid "PNG, JPEG, WebP, ZIP"
+msgstr "PNG、JPEG、WebP、ZIP"
+
+#: src/main.ts:235
+msgid "Preset"
+msgstr "预设"
+
+#: src/main.ts:83
+#: src/main.ts:480
+msgid "Process"
+msgstr "处理"
+
+#: src/main.ts:610
+msgid "Processing failed"
+msgstr "处理失败"
+
+#: src/main.ts:352
+#: src/main.ts:447
+#: src/main.ts:477
+msgid "Processing..."
+msgstr "处理中..."
+
+#: src/main.ts:91
+#: src/main.ts:459
+msgid "Ready"
+msgstr "就绪"
+
+#: src/main.ts:261
+msgid "Resize scale"
+msgstr "缩放比例"
+
+#: src/main.ts:84
+msgid "Save"
+msgstr "保存"
+
+#: src/main.ts:85
+msgid "Save All"
+msgstr "全部保存"
+
+#: src/main.ts:632
+msgid "Save failed"
+msgstr "保存失败"
+
+#: src/main.ts:652
+msgid "Select output directory"
+msgstr "选择输出目录"
+
+#: src/main.ts:185
+msgid "selected"
+msgstr "已选"
+
+#: src/main.ts:82
+msgid "Settings"
+msgstr "设置"
+
+#: src/main.ts:238
+msgid "Standard"
+msgstr "标准"
+
+#: src/main.ts:238
+msgid "Subtle"
+msgstr "轻微"

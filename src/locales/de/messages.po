@@ -1,0 +1,219 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-19 14:10+0800\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: de\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#. placeholder {0}: r.findings.length - 5
+#: src/main.ts:431
+msgid "{0, plural, one {...and # more} other {...and # more}}"
+msgstr "{0, plural, one {...und # weiteres} other {...und # weitere}}"
+
+#. placeholder {0}: state.files.length
+#: src/main.ts:454
+msgid "{0, plural, one {# file ready} other {# files ready}}"
+msgstr "{0, plural, one {# Datei bereit} other {# Dateien bereit}}"
+
+#. placeholder {0}: paths.length
+#: src/main.ts:538
+msgid "{0, plural, one {Added # file} other {Added # files}}"
+msgstr "{0, plural, one {# Datei hinzugefügt} other {# Dateien hinzugefügt}}"
+
+#. placeholder {0}: state.files.length
+#: src/main.ts:479
+msgid "{0, plural, one {Process} other {Process All (#)}}"
+msgstr "{0, plural, one {Verarbeiten} other {Alle verarbeiten (#)}}"
+
+#: src/main.ts:604
+msgid "{cnt, plural, one {Processed # image successfully} other {Processed # images successfully}}"
+msgstr "{cnt, plural, one {# Bild erfolgreich verarbeitet} other {# Bilder erfolgreich verarbeitet}}"
+
+#. placeholder {0}: state.files.length
+#. placeholder {1}: state.files.length
+#: src/main.ts:449
+msgid "{processedCount, plural, one {#/{0} processed} other {#/{1} processed}}"
+msgstr "{processedCount, plural, one {#/{0} verarbeitet} other {#/{1} verarbeitet}}"
+
+#: src/main.ts:664
+msgid "{saved, plural, one {Saved # file to output directory} other {Saved # files to output directory}}"
+msgstr "{saved, plural, one {# Datei im Ausgabeverzeichnis gespeichert} other {# Dateien im Ausgabeverzeichnis gespeichert}}"
+
+#: src/main.ts:466
+msgid "{selectedCount, plural, one {# selected} other {# selected}}"
+msgstr "{selectedCount, plural, one {# ausgewählt} other {# ausgewählt}}"
+
+#: src/main.ts:80
+msgid "Add"
+msgstr "Hinzufügen"
+
+#: src/main.ts:196
+msgid "Add more"
+msgstr "Weitere hinzufügen"
+
+#: src/main.ts:245
+msgid "Advanced parameters"
+msgstr "Erweiterte Parameter"
+
+#: src/main.ts:347
+msgid "After"
+msgstr "Nachher"
+
+#: src/main.ts:238
+msgid "Aggressive"
+msgstr "Aggressiv"
+
+#: src/main.ts:426
+msgid "AI metadata detected"
+msgstr "KI-Metadaten erkannt"
+
+#: src/main.ts:709
+msgid "All files cleared"
+msgstr "Alle Dateien entfernt"
+
+#: src/main.ts:670
+msgid "Batch save failed"
+msgstr "Stapel-speicherung fehlgeschlagen"
+
+#: src/main.ts:341
+msgid "Before"
+msgstr "Vorher"
+
+#: src/main.ts:173
+#: src/main.ts:385
+#: src/main.ts:426
+msgid "Clean"
+msgstr "Bereinigen"
+
+#: src/main.ts:88
+msgid "Clear"
+msgstr "Leeren"
+
+#: src/main.ts:353
+msgid "Click Process to strip AI metadata"
+msgstr "Klicken Sie auf Verarbeiten, um KI-Metadaten zu entfernen"
+
+#: src/main.ts:148
+msgid "Click to browse"
+msgstr "Klicken zum Durchsuchen"
+
+#: src/main.ts:188
+msgid "Deselect"
+msgstr "Abwählen"
+
+#: src/main.ts:313
+msgid "Drop images to start"
+msgstr "Bilder ablegen, um zu beginnen"
+
+#: src/main.ts:505
+msgid "Failed to open file picker"
+msgstr "Dateiauswahl konnte nicht geöffnet werden"
+
+#: src/main.ts:629
+msgid "File saved successfully"
+msgstr "Datei erfolgreich gespeichert"
+
+#: src/main.ts:81
+msgid "Files"
+msgstr "Dateien"
+
+#: src/main.ts:370
+msgid "Gallery"
+msgstr "Galerie"
+
+#: src/main.ts:498
+msgid "Images & Archives"
+msgstr "Bilder und Archive"
+
+#: src/main.ts:266
+msgid "JPEG quality"
+msgstr "JPEG-Qualität"
+
+#: src/main.ts:430
+msgid "No AI metadata signatures found."
+msgstr "Keine KI-Metadaten-Signaturen gefunden."
+
+#: src/main.ts:642
+msgid "No processed files to save"
+msgstr "Keine verarbeiteten Dateien zum Speichern"
+
+#: src/main.ts:251
+msgid "Noise fraction"
+msgstr "Rauschanteil"
+
+#: src/main.ts:256
+msgid "Noise strength"
+msgstr "Rauschstärke"
+
+#: src/main.ts:149
+#: src/main.ts:314
+msgid "PNG, JPEG, WebP, ZIP"
+msgstr "PNG, JPEG, WebP, ZIP"
+
+#: src/main.ts:235
+msgid "Preset"
+msgstr "Voreinstellung"
+
+#: src/main.ts:83
+#: src/main.ts:480
+msgid "Process"
+msgstr "Verarbeiten"
+
+#: src/main.ts:610
+msgid "Processing failed"
+msgstr "Verarbeitung fehlgeschlagen"
+
+#: src/main.ts:352
+#: src/main.ts:447
+#: src/main.ts:477
+msgid "Processing..."
+msgstr "Verarbeitung…"
+
+#: src/main.ts:91
+#: src/main.ts:459
+msgid "Ready"
+msgstr "Bereit"
+
+#: src/main.ts:261
+msgid "Resize scale"
+msgstr "Skalierungsfaktor"
+
+#: src/main.ts:84
+msgid "Save"
+msgstr "Speichern"
+
+#: src/main.ts:85
+msgid "Save All"
+msgstr "Alle speichern"
+
+#: src/main.ts:632
+msgid "Save failed"
+msgstr "Speichern fehlgeschlagen"
+
+#: src/main.ts:652
+msgid "Select output directory"
+msgstr "Ausgabeverzeichnis auswählen"
+
+#: src/main.ts:185
+msgid "selected"
+msgstr "ausgewählt"
+
+#: src/main.ts:82
+msgid "Settings"
+msgstr "Einstellungen"
+
+#: src/main.ts:238
+msgid "Standard"
+msgstr "Standard"
+
+#: src/main.ts:238
+msgid "Subtle"
+msgstr "Dezent"

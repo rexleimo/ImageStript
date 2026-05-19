@@ -1,0 +1,219 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-05-19 14:10+0800\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: ja\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#. placeholder {0}: r.findings.length - 5
+#: src/main.ts:431
+msgid "{0, plural, one {...and # more} other {...and # more}}"
+msgstr "他 {0} 件"
+
+#. placeholder {0}: state.files.length
+#: src/main.ts:454
+msgid "{0, plural, one {# file ready} other {# files ready}}"
+msgstr "{0} ファイル準備完了"
+
+#. placeholder {0}: paths.length
+#: src/main.ts:538
+msgid "{0, plural, one {Added # file} other {Added # files}}"
+msgstr "{0} ファイルを追加しました"
+
+#. placeholder {0}: state.files.length
+#: src/main.ts:479
+msgid "{0, plural, one {Process} other {Process All (#)}}"
+msgstr "{0, plural, one {処理} other {すべて処理 (#)}}"
+
+#: src/main.ts:604
+msgid "{cnt, plural, one {Processed # image successfully} other {Processed # images successfully}}"
+msgstr "{cnt} 枚の画像を正常に処理しました"
+
+#. placeholder {0}: state.files.length
+#. placeholder {1}: state.files.length
+#: src/main.ts:449
+msgid "{processedCount, plural, one {#/{0} processed} other {#/{1} processed}}"
+msgstr "{processedCount}/{0} 処理済み"
+
+#: src/main.ts:664
+msgid "{saved, plural, one {Saved # file to output directory} other {Saved # files to output directory}}"
+msgstr "{saved} ファイルを出力ディレクトリに保存しました"
+
+#: src/main.ts:466
+msgid "{selectedCount, plural, one {# selected} other {# selected}}"
+msgstr "{selectedCount} 件選択中"
+
+#: src/main.ts:80
+msgid "Add"
+msgstr "追加"
+
+#: src/main.ts:196
+msgid "Add more"
+msgstr "さらに追加"
+
+#: src/main.ts:245
+msgid "Advanced parameters"
+msgstr "詳細パラメータ"
+
+#: src/main.ts:347
+msgid "After"
+msgstr "処理後"
+
+#: src/main.ts:238
+msgid "Aggressive"
+msgstr "積極的"
+
+#: src/main.ts:426
+msgid "AI metadata detected"
+msgstr "AI メタデータを検出"
+
+#: src/main.ts:709
+msgid "All files cleared"
+msgstr "すべてのファイルをクリアしました"
+
+#: src/main.ts:670
+msgid "Batch save failed"
+msgstr "一括保存に失敗しました"
+
+#: src/main.ts:341
+msgid "Before"
+msgstr "処理前"
+
+#: src/main.ts:173
+#: src/main.ts:385
+#: src/main.ts:426
+msgid "Clean"
+msgstr "問題なし"
+
+#: src/main.ts:88
+msgid "Clear"
+msgstr "クリア"
+
+#: src/main.ts:353
+msgid "Click Process to strip AI metadata"
+msgstr "処理をクリックして AI メタデータを削除"
+
+#: src/main.ts:148
+msgid "Click to browse"
+msgstr "クリックして参照"
+
+#: src/main.ts:188
+msgid "Deselect"
+msgstr "選択解除"
+
+#: src/main.ts:313
+msgid "Drop images to start"
+msgstr "画像をドロップして開始"
+
+#: src/main.ts:505
+msgid "Failed to open file picker"
+msgstr "ファイル選択を開けませんでした"
+
+#: src/main.ts:629
+msgid "File saved successfully"
+msgstr "ファイルを保存しました"
+
+#: src/main.ts:81
+msgid "Files"
+msgstr "ファイル"
+
+#: src/main.ts:370
+msgid "Gallery"
+msgstr "ギャラリー"
+
+#: src/main.ts:498
+msgid "Images & Archives"
+msgstr "画像とアーカイブ"
+
+#: src/main.ts:266
+msgid "JPEG quality"
+msgstr "JPEG 品質"
+
+#: src/main.ts:430
+msgid "No AI metadata signatures found."
+msgstr "AI メタデータシグネチャは見つかりませんでした。"
+
+#: src/main.ts:642
+msgid "No processed files to save"
+msgstr "保存する処理済みファイルがありません"
+
+#: src/main.ts:251
+msgid "Noise fraction"
+msgstr "ノイズ割合"
+
+#: src/main.ts:256
+msgid "Noise strength"
+msgstr "ノイズ強度"
+
+#: src/main.ts:149
+#: src/main.ts:314
+msgid "PNG, JPEG, WebP, ZIP"
+msgstr "PNG、JPEG、WebP、ZIP"
+
+#: src/main.ts:235
+msgid "Preset"
+msgstr "プリセット"
+
+#: src/main.ts:83
+#: src/main.ts:480
+msgid "Process"
+msgstr "処理"
+
+#: src/main.ts:610
+msgid "Processing failed"
+msgstr "処理に失敗しました"
+
+#: src/main.ts:352
+#: src/main.ts:447
+#: src/main.ts:477
+msgid "Processing..."
+msgstr "処理中..."
+
+#: src/main.ts:91
+#: src/main.ts:459
+msgid "Ready"
+msgstr "準備完了"
+
+#: src/main.ts:261
+msgid "Resize scale"
+msgstr "リサイズ倍率"
+
+#: src/main.ts:84
+msgid "Save"
+msgstr "保存"
+
+#: src/main.ts:85
+msgid "Save All"
+msgstr "すべて保存"
+
+#: src/main.ts:632
+msgid "Save failed"
+msgstr "保存に失敗しました"
+
+#: src/main.ts:652
+msgid "Select output directory"
+msgstr "出力先ディレクトリを選択"
+
+#: src/main.ts:185
+msgid "selected"
+msgstr "選択済み"
+
+#: src/main.ts:82
+msgid "Settings"
+msgstr "設定"
+
+#: src/main.ts:238
+msgid "Standard"
+msgstr "標準"
+
+#: src/main.ts:238
+msgid "Subtle"
+msgstr "控えめ"

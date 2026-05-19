@@ -11,6 +11,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "strict": true,
+    "noImplicitAny": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
