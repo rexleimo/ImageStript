@@ -9,7 +9,7 @@
   </head>
   <body>
     <div id="app">
-      <!-- Header -->
+      <!-- Minimal Header -->
       <header class="app-header">
         <div class="header-left">
           <div class="logo">
@@ -33,68 +33,25 @@
               <button class="locale-menu-item" data-locale="ru"><span class="locale-check"></span> Русский</button>
             </div>
           </div>
-          <div class="header-divider"></div>
-          <button class="btn btn-ghost" id="btn-add">
-            <i data-lucide="plus" style="width:15px;height:15px"></i>
-            <span id="label-add">Add</span>
-          </button>
-          <button class="btn btn-ghost btn-danger-ghost" id="btn-clear" title="Clear">
-            <i data-lucide="trash-2" style="width:15px;height:15px"></i>
-          </button>
         </div>
       </header>
 
       <!-- Main Workspace -->
-      <div class="app-body">
-        <!-- Left: Thumbnail Strip -->
-        <aside class="panel panel-left" id="panel-left">
-          <div class="panel-header">
-            <span class="panel-title" id="label-files">Files</span>
-            <span class="panel-count" id="file-count">0</span>
-          </div>
-          <div class="thumbnail-list" id="file-list"></div>
-        </aside>
-
-        <!-- Center: Preview Area -->
-        <main class="panel panel-center" id="panel-center"></main>
-
-        <!-- Right: Parameters Panel -->
-        <aside class="panel panel-right" id="panel-right">
-          <div class="panel-header">
-            <span class="panel-title" id="label-settings">Settings</span>
-          </div>
-          <div class="panel-content" id="params"></div>
-          <div class="panel-divider"></div>
-          <div class="panel-content" id="report"></div>
-        </aside>
-      </div>
-
-      <!-- Bottom Action Strip -->
-      <div class="action-strip" id="action-strip">
-        <div class="action-strip-left">
-          <span class="status-text" id="status-text">Ready</span>
-        </div>
-        <div class="action-strip-center">
-          <button class="btn btn-primary" id="btn-process">
-            <i data-lucide="zap" style="width:15px;height:15px"></i>
-            <span id="label-process">Process</span>
-          </button>
-          <button class="btn btn-secondary" id="btn-save" disabled>
-            <i data-lucide="save" style="width:15px;height:15px"></i>
-            <span id="label-save">Save</span>
-          </button>
-          <button class="btn btn-secondary" id="btn-save-all" disabled>
-            <i data-lucide="download" style="width:15px;height:15px"></i>
-            <span id="label-save-all">Save All</span>
-          </button>
-        </div>
-        <div class="action-strip-right">
-          <span class="progress-text" id="progress-text"></span>
-        </div>
-      </div>
+      <main class="app-body" id="app-body">
+        <!-- Content rendered by JS -->
+      </main>
 
       <!-- Toast Container -->
       <div id="toast-container"></div>
+
+      <!-- Preview Modal -->
+      <div id="preview-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+          <button class="modal-close" id="modal-close">${lucide("x", 18)}</button>
+          <div class="modal-body" id="modal-body"></div>
+        </div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

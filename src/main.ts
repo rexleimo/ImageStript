@@ -6,7 +6,7 @@ import { PRESET_PARAMS } from "./types";
 import { t, plural } from "@lingui/core/macro";
 import { i18n, setupI18n, getLocale, switchLocale, LOCALES, type Locale } from "./i18n";
 
-type ViewMode = "preview" | "gallery";
+type DirtyKey = "workspace" | "params" | "actions" | "labels";
 
 interface FileEntry {
   path: string;
@@ -27,8 +27,18 @@ const state = {
   params: { ...PRESET_PARAMS.Standard } as ProcessParams,
   processing: false,
   advancedOpen: false,
-  viewMode: "preview" as ViewMode,
+  modalOpen: false,
 };
+
+const dirty = new Set<DirtyKey>();
+
+function markDirty(...keys: DirtyKey[]) {
+  for (const k of keys) dirty.add(k);
+}
+
+function markAll() {
+  (["workspace", "params", "actions", "labels"] as DirtyKey[]).forEach(k => dirty.add(k));
+}
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -38,6 +48,22 @@ function lucide(name: string, size = 16): string {
 
 function refreshIcons() {
   try { (window as any).lucide?.createIcons(); } catch {}
+}
+
+function flush() {
+  if (dirty.has("workspace")) renderWorkspace();
+  if (dirty.has("actions")) renderActions();
+  if (dirty.has("labels")) renderStaticLabels();
+  if (dirty.size > 0) {
+    updateLocaleButton();
+    refreshIcons();
+  }
+  dirty.clear();
+}
+
+function render() {
+  markAll();
+  flush();
 }
 
 function toast(message: string, type: "success" | "error" | "info" = "info") {
@@ -60,40 +86,22 @@ function toast(message: string, type: "success" | "error" | "info" = "info") {
   }, 3500);
 }
 
-function render() {
-  renderFileList();
-  renderParams();
-  renderMainContent();
-  renderReport();
-  renderActionStrip();
-  renderStaticLabels();
-  updateFileCount();
-  updateLocaleButton();
-  refreshIcons();
-}
-
 function renderStaticLabels() {
   const set = (id: string, text: string) => {
     const el = $(id);
     if (el) el.textContent = text;
   };
   set("label-add", t`Add`);
-  set("label-files", t`Files`);
-  set("label-settings", t`Settings`);
   set("label-process", t`Process`);
+  set("label-process-all", t`Process All`);
   set("label-save", t`Save`);
   set("label-save-all", t`Save All`);
-
-  const btnClear = $("btn-clear");
-  if (btnClear) btnClear.title = t`Clear`;
-
-  const statusEl = $("status-text");
-  if (statusEl && state.files.length === 0) statusEl.textContent = t`Ready`;
-}
-
-function updateFileCount() {
-  const el = $("file-count");
-  if (el) el.textContent = String(state.files.length);
+  set("label-clear", t`Clear all`);
+  set("label-drop-hint", t`Drop images here`);
+  set("label-drop-formats", t`PNG, JPEG, WebP, ZIP`);
+  set("label-or-click", t`or click to browse`);
+  set("label-advanced", t`Advanced parameters`);
+  set("label-preset", t`Preset`);
 }
 
 function updateLocaleButton() {
@@ -136,361 +144,381 @@ function setupLocaleDropdown() {
   });
 }
 
-// ── Left Panel ──
-function renderFileList() {
-  const list = $("file-list");
-  if (!list) return;
+// ═══════════════════════════════════════
+// WORKSPACE — Permute-style single view
+// ═══════════════════════════════════════
+
+function renderWorkspace() {
+  const container = $("app-body");
+  if (!container) return;
 
   if (state.files.length === 0) {
-    list.innerHTML = `
-      <div class="drop-zone" id="drop-zone">
-        <div class="drop-zone-icon">${lucide("folder-open", 28)}</div>
-        <div class="drop-zone-text">${t`Click to browse`}</div>
-        <div class="drop-zone-hint">${t`PNG, JPEG, WebP, ZIP`}</div>
-      </div>`;
-    const dz = $("drop-zone");
-    dz?.addEventListener("click", pickFiles);
+    container.innerHTML = renderEmptyState();
+    attachEmptyStateEvents();
     return;
   }
 
+  container.innerHTML = `
+    <div class="workspace-content">
+      ${renderAddBar()}
+      ${renderFileGrid()}
+      ${renderParamsSection()}
+      ${renderActionSection()}
+    </div>
+  `;
+
+  attachGridEvents();
+  attachParamEvents();
+  attachActionEvents();
+}
+
+function renderEmptyState(): string {
+  return `
+    <div class="empty-state" id="empty-state">
+      <div class="drop-zone-large" id="drop-zone">
+        <div class="drop-zone-icon">${lucide("image-plus", 48)}</div>
+        <div class="drop-zone-title" id="label-drop-hint">Drop images here</div>
+        <div class="drop-zone-subtitle" id="label-or-click">or click to browse</div>
+        <div class="drop-zone-formats" id="label-drop-formats">PNG, JPEG, WebP, ZIP</div>
+      </div>
+    </div>
+  `;
+}
+
+function attachEmptyStateEvents() {
+  $("drop-zone")?.addEventListener("click", pickFiles);
+}
+
+function renderAddBar(): string {
+  return `
+    <div class="add-bar">
+      <button class="btn btn-ghost btn-sm" id="btn-add">
+        ${lucide("plus", 14)}
+        <span id="label-add">Add</span>
+      </button>
+      <div class="file-count-badge">
+        ${state.files.length} ${state.files.length === 1 ? t`file` : t`files`}
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost btn-sm btn-danger-ghost" id="btn-clear">
+        ${lucide("trash-2", 14)}
+        <span id="label-clear">Clear all</span>
+      </button>
+    </div>
+  `;
+}
+
+function renderFileGrid(): string {
   const selectedCount = state.files.filter(f => f.selected).length;
 
-  let html = `<div class="thumbnail-list">`;
+  let html = `
+    <div class="file-grid">
+      ${state.files.map((f, i) => {
+        const isActive = i === state.activeIndex;
+        const status = f.processed
+          ? "processed"
+          : f.report
+            ? f.report.findings.length > 0
+              ? "warning"
+              : "clean"
+            : "pending";
 
-  html += state.files.map((f, i) => {
-    const isActive = i === state.activeIndex;
-    return `
-      <div class="thumbnail-item ${isActive ? "active" : ""}" data-index="${i}">
-        <div class="thumb-check ${f.selected ? "checked" : ""}" data-check="${i}">
-          ${f.selected ? lucide("check", 10) : ""}
-        </div>
-        ${f.originalDataUrl
-          ? `<img src="${f.originalDataUrl}" alt="${f.name}" />`
-          : `<div class="thumb-placeholder">${lucide("image", 20)}</div>`}
-        <div class="thumb-overlay">${f.name}</div>
-        ${f.report ? (f.report.findings.length > 0
-          ? `<div class="thumb-badge"><span class="badge badge-warning">AI</span></div>`
-          : `<div class="thumb-badge"><span class="badge badge-success">${t`Clean`}</span></div>`)
-          : ""}
-        ${f.processed ? `<div class="thumb-badge" style="top:auto;bottom:5px;right:5px"><span class="badge badge-success">${lucide("check", 8)}</span></div>` : ""}
-      </div>
-    `;
-  }).join("");
-
-  html += `</div>`;
+        return `
+          <div class="file-card ${isActive ? "active" : ""} ${f.selected ? "selected" : ""}" data-index="${i}">
+            <div class="file-card-thumb">
+              ${f.originalDataUrl
+                ? `<img src="${f.originalDataUrl}" alt="${f.name}" />
+                   ${f.processed ? `<div class="file-card-processed-overlay">${lucide("check-circle-2", 24)}</div>` : ""}`
+                : `<div class="file-card-placeholder">${lucide("image", 28)}</div>`}
+            </div>
+            <div class="file-card-info">
+              <div class="file-card-name" title="${f.name}">${f.name}</div>
+              <div class="file-card-status">
+                ${status === "pending" ? `<span class="status-dot"></span><span class="status-text">${t`Scanning...`}</span>`
+                  : status === "clean" ? `<span class="status-dot success"></span><span class="status-text success">${t`Clean`}</span>`
+                  : status === "warning" ? `<span class="status-dot warning"></span><span class="status-text warning">${t`AI detected`}</span>`
+                  : `<span class="status-dot success"></span><span class="status-text success">${t`Stripped`}</span>`}
+              </div>
+            </div>
+            <div class="file-card-actions">
+              ${f.processed && f.outputPath
+                ? `<button class="btn-icon btn-sm" data-save="${i}" title="${t`Save`}">${lucide("download", 14)}</button>`
+                : ""}
+              <button class="btn-icon btn-sm" data-preview="${i}" title="${t`Preview`}">${lucide("eye", 14)}</button>
+              <button class="btn-icon btn-sm btn-danger-ghost" data-remove="${i}" title="${t`Remove`}">${lucide("x", 14)}</button>
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
 
   if (selectedCount > 0) {
     html += `
-      <div class="batch-bar">
-        <span class="batch-info"><strong>${selectedCount}</strong> ${t`selected`}</span>
-        <div class="spacer"></div>
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" id="btn-deselect">
-          ${lucide("x", 10)} ${t`Deselect`}
-        </button>
+      <div class="selection-bar">
+        <span><strong>${selectedCount}</strong> ${t`selected`}</span>
+        <button class="btn btn-ghost btn-sm" id="btn-deselect">${lucide("x", 12)} ${t`Deselect`}</button>
       </div>
     `;
   }
 
-  html += `
-    <button class="btn btn-ghost" id="add-more" style="margin:8px;width:calc(100% - 16px);justify-content:center;font-size:12px">
-      ${lucide("plus", 12)} ${t`Add more`}
-    </button>
-  `;
+  return html;
+}
 
-  list.innerHTML = html;
+function attachGridEvents() {
+  $("btn-add")?.addEventListener("click", pickFiles);
 
-  list.querySelectorAll(".thumbnail-item").forEach((el) => {
-    el.addEventListener("click", (e) => {
-      const target = e.target as HTMLElement;
-      if (target.closest(".thumb-check")) return;
-      state.activeIndex = parseInt((el as HTMLElement).dataset.index || "0");
-      render();
-    });
-  });
-
-  list.querySelectorAll(".thumb-check[data-check]").forEach((el) => {
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const idx = parseInt((el as HTMLElement).dataset.check || "0");
-      state.files[idx].selected = !state.files[idx].selected;
-      render();
-    });
+  $("btn-clear")?.addEventListener("click", () => {
+    if (state.files.length === 0) return;
+    state.files = [];
+    state.activeIndex = -1;
+    render();
+    toast(t`All files cleared`, "info");
   });
 
   $("btn-deselect")?.addEventListener("click", () => {
     state.files.forEach(f => (f.selected = false));
-    render();
+    markDirty("workspace");
+    flush();
   });
 
-  $("add-more")?.addEventListener("click", pickFiles);
+  document.querySelectorAll(".file-card").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      const target = e.target as HTMLElement;
+      if (target.closest("[data-save]") || target.closest("[data-preview]") || target.closest("[data-remove]")) return;
+
+      const idx = parseInt((el as HTMLElement).dataset.index || "0");
+      state.activeIndex = idx;
+      markDirty("workspace");
+      flush();
+    });
+  });
+
+  document.querySelectorAll("[data-save]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const idx = parseInt((el as HTMLElement).dataset.save || "0");
+      saveSingle(idx);
+    });
+  });
+
+  document.querySelectorAll("[data-preview]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const idx = parseInt((el as HTMLElement).dataset.preview || "0");
+      openPreviewModal(idx);
+    });
+  });
+
+  document.querySelectorAll("[data-remove]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const idx = parseInt((el as HTMLElement).dataset.remove || "0");
+      state.files.splice(idx, 1);
+      if (state.activeIndex >= state.files.length) state.activeIndex = state.files.length - 1;
+      if (state.files.length === 0) state.activeIndex = -1;
+      render();
+    });
+  });
 }
 
-// ── Right Panel ──
-function renderParams() {
-  const container = $("params");
-  if (!container) return;
+// ═══════════════════════════════════════
+// PARAMETERS — Collapsible, preset-first
+// ═══════════════════════════════════════
 
-  const p = state.params;
-  container.innerHTML = `
-    <div class="section-label">${t`Preset`}</div>
-    <div class="preset-row">
-      ${(["Subtle", "Standard", "Aggressive"] as Preset[]).map(pr => {
-        const presetLabel = pr === "Subtle" ? t`Subtle` : pr === "Standard" ? t`Standard` : t`Aggressive`;
-        return `<button class="preset-btn ${state.preset === pr ? "active" : ""}" data-preset="${pr}">${presetLabel}</button>`;
-      }).join("")}
-    </div>
-    <div style="margin-top:14px">
+function renderParamsSection(): string {
+  return `
+    <div class="params-section">
+      <div class="section-header">
+        <span class="section-title" id="label-preset">Preset</span>
+      </div>
+      <div class="preset-segmented" id="preset-segmented">
+        ${(["Subtle", "Standard", "Aggressive"] as Preset[]).map(pr => {
+          const presetLabel = pr === "Subtle" ? t`Subtle` : pr === "Standard" ? t`Standard` : t`Aggressive`;
+          return `<button class="preset-segment ${state.preset === pr ? "active" : ""}" data-preset="${pr}">${presetLabel}</button>`;
+        }).join("")}
+      </div>
       <button class="toggle-btn ${state.advancedOpen ? "open" : ""}" id="toggle-advanced">
         <span class="chevron">${lucide("chevron-right", 12)}</span>
-        ${t`Advanced parameters`}
+        <span id="label-advanced">Advanced parameters</span>
       </button>
+      <div class="advanced-params ${state.advancedOpen ? "open" : ""}" id="advanced-params">
+        ${renderAdvancedParams()}
+      </div>
     </div>
-    ${state.advancedOpen ? `
-    <div style="margin-top:10px; display:flex; flex-direction:column; gap:10px;">
-      <div class="param-row">
-        <label>${t`Noise fraction`}</label>
-        <input type="range" min="0" max="10" step="0.1" value="${(p.noise_fraction * 100).toFixed(1)}" data-param="noise_fraction" />
-        <span class="param-val">${(p.noise_fraction * 100).toFixed(1)}%</span>
-      </div>
-      <div class="param-row">
-        <label>${t`Noise strength`}</label>
-        <input type="range" min="1" max="5" step="1" value="${p.noise_strength}" data-param="noise_strength" />
-        <span class="param-val">${p.noise_strength}</span>
-      </div>
-      <div class="param-row">
-        <label>${t`Resize scale`}</label>
-        <input type="range" min="0.990" max="1.000" step="0.001" value="${p.resize_scale}" data-param="resize_scale" />
-        <span class="param-val">${p.resize_scale.toFixed(3)}</span>
-      </div>
-      <div class="param-row">
-        <label>${t`JPEG quality`}</label>
-        <input type="range" min="80" max="100" step="1" value="${p.jpeg_quality}" data-param="jpeg_quality" />
-        <span class="param-val">${p.jpeg_quality}</span>
-      </div>
-    </div>` : ""}
   `;
+}
 
-  container.querySelectorAll(".preset-btn").forEach((btn) => {
+function renderAdvancedParams(): string {
+  const p = state.params;
+  return `
+    <div class="param-row">
+      <label>${t`Noise fraction`}</label>
+      <input type="range" min="0" max="10" step="0.1" value="${(p.noise_fraction * 100).toFixed(1)}" data-param="noise_fraction" />
+      <span class="param-val">${(p.noise_fraction * 100).toFixed(1)}%</span>
+    </div>
+    <div class="param-row">
+      <label>${t`Noise strength`}</label>
+      <input type="range" min="1" max="5" step="1" value="${p.noise_strength}" data-param="noise_strength" />
+      <span class="param-val">${p.noise_strength}</span>
+    </div>
+    <div class="param-row">
+      <label>${t`Resize scale`}</label>
+      <input type="range" min="0.990" max="1.000" step="0.001" value="${p.resize_scale}" data-param="resize_scale" />
+      <span class="param-val">${p.resize_scale.toFixed(3)}</span>
+    </div>
+    <div class="param-row">
+      <label>${t`JPEG quality`}</label>
+      <input type="range" min="80" max="100" step="1" value="${p.jpeg_quality}" data-param="jpeg_quality" />
+      <span class="param-val">${p.jpeg_quality}</span>
+    </div>
+  `;
+}
+
+function attachParamEvents() {
+  $("toggle-advanced")?.addEventListener("click", () => {
+    state.advancedOpen = !state.advancedOpen;
+    const el = $("advanced-params");
+    if (el) el.classList.toggle("open", state.advancedOpen);
+    const btn = $("toggle-advanced");
+    if (btn) btn.classList.toggle("open", state.advancedOpen);
+    refreshIcons();
+  });
+
+  document.querySelectorAll("#preset-segmented .preset-segment").forEach((btn) => {
     btn.addEventListener("click", () => {
       const pr = (btn as HTMLElement).dataset.preset as Preset;
       state.preset = pr;
       state.params = { ...PRESET_PARAMS[pr] };
-      render();
+      markDirty("workspace", "actions");
+      flush();
     });
   });
 
-  $("toggle-advanced")?.addEventListener("click", () => {
-    state.advancedOpen = !state.advancedOpen;
-    render();
-  });
-
-  container.querySelectorAll("input[type=range]").forEach((input) => {
-    input.addEventListener("input", () => {
-      const key = (input as HTMLInputElement).dataset.param as keyof ProcessParams;
-      const val = parseFloat((input as HTMLInputElement).value);
+  document.querySelectorAll(".advanced-params input[type=range]").forEach((input) => {
+    const el = input as HTMLInputElement;
+    const updateProgress = () => {
+      const min = parseFloat(el.min);
+      const max = parseFloat(el.max);
+      const val = parseFloat(el.value);
+      const pct = ((val - min) / (max - min)) * 100;
+      el.style.setProperty("--range-progress", `${pct}%`);
+    };
+    updateProgress();
+    el.addEventListener("input", () => {
+      const key = el.dataset.param as keyof ProcessParams;
+      const val = parseFloat(el.value);
       if (key === "noise_fraction") {
         state.params[key] = val / 100;
       } else {
         (state.params[key] as number) = val;
       }
       state.preset = "" as Preset;
-      render();
+      updateProgress();
+      const valSpan = el.parentElement?.querySelector(".param-val") as HTMLElement;
+      if (valSpan) {
+        if (key === "noise_fraction") valSpan.textContent = `${val.toFixed(1)}%`;
+        else if (key === "resize_scale") valSpan.textContent = val.toFixed(3);
+        else valSpan.textContent = String(val);
+      }
+    });
+    el.addEventListener("change", () => {
+      markDirty("workspace", "actions");
+      flush();
     });
   });
 }
 
-// ── Center Panel ──
-function renderMainContent() {
-  const center = $("panel-center");
-  if (!center) return;
+// ═══════════════════════════════════════
+// ACTIONS — Contextual, centered
+// ═══════════════════════════════════════
 
-  if (state.files.length === 0) {
-    center.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon-wrapper">
-          ${lucide("image", 36)}
-        </div>
-        <div class="empty-title">${t`Drop images to start`}</div>
-        <div class="empty-hint">${t`PNG, JPEG, WebP, ZIP`}</div>
-      </div>`;
-    return;
-  }
+function renderActions(): string {
+  return "";
+}
 
-  if (state.viewMode === "gallery") {
-    renderGallery(center);
-    return;
-  }
+function renderActionSection(): string {
+  const processedCount = state.files.filter(f => f.processed).length;
+  const hasProcessed = processedCount > 0;
+  const allProcessed = processedCount === state.files.length && state.files.length > 0;
 
-  const file = state.files[state.activeIndex];
+  return `
+    <div class="action-section">
+      <button class="btn btn-primary btn-lg" id="btn-process" ${state.processing ? "disabled" : ""}>
+        ${state.processing ? lucide("loader-2", 18) : lucide("zap", 18)}
+        <span id="label-process">${state.processing ? t`Processing...` : state.files.length > 1 ? t`Process All` : t`Process`}</span>
+      </button>
+      ${hasProcessed ? `
+        <button class="btn btn-secondary btn-lg" id="btn-save-all">
+          ${lucide("download", 16)}
+          <span id="label-save-all">${processedCount > 1 ? t`Save All` : t`Save`}</span>
+        </button>
+      ` : ""}
+    </div>
+  `;
+}
+
+function attachActionEvents() {
+  $("btn-process")?.addEventListener("click", processAll);
+  $("btn-save-all")?.addEventListener("click", saveAll);
+}
+
+// ═══════════════════════════════════════
+// PREVIEW MODAL
+// ═══════════════════════════════════════
+
+function openPreviewModal(index: number) {
+  const file = state.files[index];
   if (!file) return;
+
+  state.modalOpen = true;
+  const modal = $("preview-modal");
+  const body = $("modal-body");
+  if (!modal || !body) return;
 
   const originalSrc = file.originalDataUrl || "";
   const hasOriginal = originalSrc.length > 0;
-  const viewMode = state.viewMode as string;
 
-  center.innerHTML = `
-    <div class="preview-header">
-      <span class="preview-filename">${file.name}</span>
-      <div class="view-switcher">
-        <button class="${viewMode === "preview" ? "active" : ""}" data-view="preview">${lucide("columns-2", 14)}</button>
-        <button class="${viewMode === "gallery" ? "active" : ""}" data-view="gallery">${lucide("grid-3x3", 14)}</button>
-      </div>
-    </div>
-    <div class="preview-area">
-      <div class="preview-panel">
-        <div class="label">${t`Before`}</div>
-        <div class="frame">
-          ${hasOriginal ? `<img src="${originalSrc}" alt="original" />` : '<div class="spinner"></div>'}
+  body.innerHTML = `
+    <div class="modal-preview">
+      <div class="modal-preview-panel">
+        <div class="modal-preview-label">${t`Original`}</div>
+        <div class="modal-preview-frame">
+          ${hasOriginal ? `<img src="${originalSrc}" alt="original" />` : `<div class="spinner"></div>`}
         </div>
       </div>
-      <div class="preview-panel">
-        <div class="label">${t`After`}</div>
-        <div class="frame">
+      <div class="modal-preview-panel">
+        <div class="modal-preview-label">${t`Stripped`}</div>
+        <div class="modal-preview-frame">
           ${file.processed && file.imageDataUrl
             ? `<img src="${file.imageDataUrl}" alt="processed" />`
             : state.processing
-              ? `<div style="display:flex;align-items:center;gap:8px;color:var(--text-tertiary);font-size:13px"><div class="spinner"></div> ${t`Processing...`}</div>`
-              : `<div style="text-align:center;color:var(--text-tertiary);font-size:13px">${lucide("wand-2", 22)}<br><br>${t`Click Process to strip AI metadata`}</div>`}
+              ? `<div style="display:flex;align-items:center;gap:8px;color:var(--text-tertiary)"><div class="spinner"></div> ${t`Processing...`}</div>`
+              : `<div class="modal-preview-placeholder">${lucide("wand-2", 32)}<div>${t`Process to see result`}</div></div>`}
         </div>
       </div>
     </div>
-  `;
-
-  center.querySelectorAll("[data-view]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.viewMode = (btn as HTMLElement).dataset.view as ViewMode;
-      render();
-    });
-  });
-}
-
-function renderGallery(center: HTMLElement) {
-  center.innerHTML = `
-    <div class="preview-header">
-      <span class="preview-filename">${t`Gallery`}</span>
-      <div class="view-switcher">
-        <button class="${state.viewMode === "preview" ? "active" : ""}" data-view="preview">${lucide("columns-2", 14)}</button>
-        <button class="${state.viewMode === "gallery" ? "active" : ""}" data-view="gallery">${lucide("grid-3x3", 14)}</button>
+    ${file.report ? `
+      <div class="modal-report ${file.report.findings.length > 0 ? "warn" : "safe"}">
+        ${lucide(file.report.findings.length > 0 ? "alert-triangle" : "shield-check", 16)}
+        <span>${file.report.findings.length > 0 ? t`AI metadata detected` : t`No AI metadata found`}</span>
       </div>
-    </div>
-    <div class="gallery-grid">
-      ${state.files.map((f, i) => `
-        <div class="gallery-item ${i === state.activeIndex ? "active" : ""}" data-index="${i}">
-          ${f.originalDataUrl
-            ? `<img src="${f.originalDataUrl}" alt="${f.name}" />`
-            : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-tertiary)">${lucide("image", 22)}</div>`}
-          <div class="gallery-overlay">${f.name}</div>
-          ${f.report ? (f.report.findings.length > 0
-            ? `<div class="gallery-badge"><span class="badge badge-warning">AI</span></div>`
-            : `<div class="gallery-badge"><span class="badge badge-success">${t`Clean`}</span></div>`)
-            : ""}
-          ${f.processed ? `<div style="position:absolute;bottom:6px;right:6px"><span class="badge badge-success">${lucide("check", 8)}</span></div>` : ""}
-        </div>
-      `).join("")}
-    </div>
+    ` : ""}
   `;
 
-  center.querySelectorAll("[data-view]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.viewMode = (btn as HTMLElement).dataset.view as ViewMode;
-      render();
-    });
-  });
-
-  center.querySelectorAll(".gallery-item").forEach((el) => {
-    el.addEventListener("click", () => {
-      state.activeIndex = parseInt((el as HTMLElement).dataset.index || "0");
-      state.viewMode = "preview";
-      render();
-    });
-  });
+  modal.classList.remove("hidden");
+  refreshIcons();
 }
 
-// ── Report ──
-function renderReport() {
-  const el = $("report");
-  if (!el) return;
-
-  const file = state.files[state.activeIndex];
-  if (!file || !file.report) {
-    el.innerHTML = "";
-    return;
-  }
-
-  const r = file.report;
-  const isWarn = r.findings.length > 0;
-  el.innerHTML = `
-    <div class="report-card ${isWarn ? "warn" : "safe"}">
-      <span class="report-icon">${lucide(isWarn ? "alert-triangle" : "shield-check", 16)}</span>
-      <div class="report-content">
-        <div class="title">${isWarn ? t`AI metadata detected` : t`Clean`}</div>
-        <div class="detail">
-          ${isWarn
-            ? r.findings.slice(0, 5).map(f => `<div>${f.container}: ${f.signal}</div>`).join("")
-            : t`No AI metadata signatures found.`}
-          ${r.findings.length > 5 ? `<div style="color:var(--text-tertiary)">${plural(r.findings.length - 5, { one: `...and # more`, other: `...and # more` })}</div>` : ""}
-        </div>
-      </div>
-    </div>
-  `;
+function closePreviewModal() {
+  state.modalOpen = false;
+  $("preview-modal")?.classList.add("hidden");
 }
 
-// ── Action Strip ──
-function renderActionStrip() {
-  const processedCount = state.files.filter(f => f.processed).length;
-  const selectedCount = state.files.filter(f => f.selected && f.processed).length;
-  const activeFile = state.activeIndex >= 0 ? state.files[state.activeIndex] : null;
+// ═══════════════════════════════════════
+// FILE OPERATIONS
+// ═══════════════════════════════════════
 
-  const statusEl = $("status-text");
-  if (statusEl) {
-    if (state.processing) {
-      statusEl.textContent = t`Processing...`;
-    } else if (processedCount > 0) {
-      statusEl.textContent = plural(processedCount, {
-        one: `#/${state.files.length} processed`,
-        other: `#/${state.files.length} processed`,
-      });
-    } else if (state.files.length > 0) {
-      statusEl.textContent = plural(state.files.length, {
-        one: `# file ready`,
-        other: `# files ready`,
-      });
-    } else {
-      statusEl.textContent = t`Ready`;
-    }
-  }
-
-  const progressEl = $("progress-text");
-  if (progressEl) {
-    progressEl.textContent = selectedCount > 0
-      ? plural(selectedCount, { one: `# selected`, other: `# selected` })
-      : "";
-  }
-
-  const btnProcess = $("btn-process") as HTMLButtonElement;
-  const btnSave = $("btn-save") as HTMLButtonElement;
-  const btnSaveAll = $("btn-save-all") as HTMLButtonElement;
-
-  if (btnProcess) {
-    btnProcess.disabled = state.processing;
-    const label = state.processing
-      ? t`Processing...`
-      : state.files.length > 1
-        ? plural(state.files.length, { one: `Process`, other: `Process All (#)` })
-        : t`Process`;
-    btnProcess.innerHTML = `${lucide("zap", 15)}<span>${label}</span>`;
-  }
-
-  if (btnSave) {
-    btnSave.disabled = !(activeFile?.processed && activeFile?.outputPath);
-  }
-
-  if (btnSaveAll) {
-    btnSaveAll.disabled = !state.files.some(f => f.processed && f.outputPath);
-  }
-}
-
-// ── File Operations ──
 async function pickFiles() {
   try {
     const selected = await open({
@@ -552,7 +580,8 @@ async function inspectAll() {
     }
   });
   await Promise.all(promises);
-  render();
+  markDirty("workspace");
+  flush();
 }
 
 async function loadOriginalPreviews() {
@@ -570,10 +599,12 @@ async function loadOriginalPreviews() {
     }
   });
   await Promise.all(promises);
-  render();
+  markDirty("workspace");
+  flush();
 }
 
-async function processActive() {
+async function processAll() {
+  if (state.files.length === 0) return;
   state.processing = true;
   render();
 
@@ -671,8 +702,32 @@ async function saveAll() {
   }
 }
 
-// ── Drag & Drop ──
+// ═══════════════════════════════════════
+// DRAG & DROP
+// ═══════════════════════════════════════
+
 function setupDragDrop() {
+  const app = $("app");
+  if (!app) return;
+
+  let dragCounter = 0;
+
+  document.body.addEventListener("dragenter", (e) => {
+    e.preventDefault();
+    dragCounter++;
+    if (dragCounter === 1) {
+      app.classList.add("drag-over");
+    }
+  });
+
+  document.body.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter === 0) {
+      app.classList.remove("drag-over");
+    }
+  });
+
   document.body.addEventListener("dragover", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -681,6 +736,9 @@ function setupDragDrop() {
   document.body.addEventListener("drop", async (e) => {
     e.preventDefault();
     e.stopPropagation();
+    dragCounter = 0;
+    app.classList.remove("drag-over");
+
     const files = e.dataTransfer?.files;
     if (!files || files.length === 0) return;
 
@@ -693,25 +751,24 @@ function setupDragDrop() {
   });
 }
 
-// ── Init ──
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+
 document.addEventListener("DOMContentLoaded", async () => {
   await setupI18n();
   render();
   setupDragDrop();
 
-  $("btn-add")?.addEventListener("click", pickFiles);
-  $("btn-clear")?.addEventListener("click", () => {
-    if (state.files.length === 0) return;
-    state.files = [];
-    state.activeIndex = -1;
-    state.viewMode = "preview";
-    render();
-    toast(t`All files cleared`, "info");
+  $("modal-close")?.addEventListener("click", closePreviewModal);
+  $("preview-modal")?.addEventListener("click", (e) => {
+    if ((e.target as HTMLElement).classList.contains("modal-backdrop")) {
+      closePreviewModal();
+    }
   });
-
-  $("btn-process")?.addEventListener("click", processActive);
-  $("btn-save")?.addEventListener("click", () => saveSingle(state.activeIndex));
-  $("btn-save-all")?.addEventListener("click", saveAll);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && state.modalOpen) closePreviewModal();
+  });
 
   setupLocaleDropdown();
 });

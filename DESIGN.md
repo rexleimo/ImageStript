@@ -1,32 +1,42 @@
 # ImageStript Design System
 
+## Design Philosophy: "Permute-style" Minimalism
+
+ImageStript follows the **Permute** school of Mac utility design — not the native macOS "inspector panel" pattern, nor the pro creative-tool "3-panel IDE" pattern. The core principles:
+
+1. **Single-focus workspace** — One task, one view, minimal chrome
+2. **Content is the interface** — The dropped files *are* the UI; no persistent sidebar needed
+3. **Presets over parameters** — Smart defaults; advanced options tucked away
+4. **Actions live with content** — Process/save buttons appear in-context, not in a distant toolbar
+5. **Zero-state as invitation** — Empty state is a beautiful drop zone, not a sad "no files" message
+6. **Progress is visible** — Each file shows its own status; no separate progress panel
+
 ## Visual Theme
 
-Dark professional creative-tool interface. Inspired by desktop video editors (CapCut, DaVinci Resolve) — a focused workspace where the content takes center stage.
+Dark, minimal, native-feeling. The aesthetic borrows from modern Mac utilities (Permute, ImageOptim, HandBrake) rather than creative suites.
 
-- **Canvas metaphor**: Central preview area as the "stage", surrounded by tool panels
-- **Depth layering**: Background < Panel < Elevated controls < Modal overlays
-- **Signature motif**: Rounded-square image frames with subtle inner glow on hover; purple accent glow on active states
+- **Depth**: Almost flat. No strong panel separation — subtle borders only
+- **Background hierarchy**: Slightly lighter than pure black, but not "panel heavy"
+- **Signature motif**: Large rounded drop zone with animated border; file cards with inline status badges
 
 ## Color Roles
 
 ```css
---bg-canvas:      #0a0c10;    /* deepest background */
---bg-panel:       #14161c;    /* sidebar / panels */
---bg-elevated:    #1c1f28;    /* cards, inputs, buttons */
---bg-hover:       #252a36;    /* hover state */
---border-subtle:  #1e222e;    /* panel dividers */
---border-default: #2a3040;    /* component borders */
---border-active:  #3d3680;    /* focused/active borders */
+--bg-canvas:      #0c0e14;    /* deepest background — almost black */
+--bg-surface:     #14161d;    /* cards, elevated items */
+--bg-hover:       #1c1f28;    /* hover state */
+--border-subtle:  #1e222e;    /* dividers */
+--border-default: #2a3040;    /* card borders */
+--border-active:  #7c6cf0;    /* drop zone active, processing */
 
---text-primary:   #e8eaf0;    /* headings, primary text */
---text-secondary: #8b92a8;    /* labels, descriptions */
---text-tertiary:  #5a6078;    /* placeholders, disabled */
+--text-primary:   #f0f1f5;    /* headings */
+--text-secondary: #8b92a8;    /* body, labels */
+--text-tertiary:  #5a6078;    /* hints, disabled */
 
 --accent:         #7c6cf0;    /* primary purple */
---accent-hover:   #9184f4;    /* lighter on hover */
+--accent-hover:   #9184f4;
 --accent-glow:    rgba(124, 108, 240, 0.25);
---accent-dim:     #3d3680;    /* active selection bg */
+--accent-dim:     #2d2852;
 
 --success:        #34d399;
 --success-bg:     rgba(52, 211, 153, 0.10);
@@ -36,123 +46,169 @@ Dark professional creative-tool interface. Inspired by desktop video editors (Ca
 --danger-bg:      rgba(248, 113, 113, 0.10);
 ```
 
-## Typography Pair
+## Typography
 
-- **Primary**: `"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`
-- **Mono**: `"SF Mono", "Fira Code", "JetBrains Mono", monospace` — for numeric values, file sizes
+- **Primary**: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif`
+- **Mono**: `"SF Mono", "Fira Code", monospace` — for file sizes, numeric values
 - **Scale**:
-  - Display: 18px / 700 (app title)
-  - Title: 14px / 600 (panel headers)
-  - Body: 13px / 400 (labels, descriptions)
-  - Caption: 11px / 500 uppercase tracking-wide (badges, section labels)
-  - Mono: 12px / 400 tabular-nums (parameter values)
+  - App title: 15px / 600
+  - Section: 13px / 500
+  - Body: 12px / 400
+  - Caption: 11px / 500 (badges, hints)
+  - Mono: 11px / 400 tabular-nums
 
-## Spacing Scale
+## Spacing
 
-- Base unit: 4px
-- `--space-1`: 4px
-- `--space-2`: 8px
-- `--space-3`: 12px
-- `--space-4`: 16px
-- `--space-5`: 20px
-- `--space-6`: 24px
-- `--space-8`: 32px
+- Base: 4px
+- Tight: 8px
+- Default: 12px
+- Relaxed: 16px
+- Loose: 24px
 
-Panel padding: 16px
-Component gap: 8px–12px
-Section gap: 16px–20px
+## Radius
 
-## Radius Scale
-
-- `--radius-sm`: 6px   (small buttons, inputs)
-- `--radius-md`: 10px  (cards, panels)
-- `--radius-lg`: 14px  (preview frames, modals)
-- `--radius-xl`: 18px  (drop zones, empty states)
-- `--radius-full`: 9999px (pills, badges)
+- `--radius-sm`: 8px   (buttons, badges)
+- `--radius-md`: 12px  (cards, inputs)
+- `--radius-lg`: 16px  (drop zone, modals)
+- `--radius-xl`: 20px  (large cards)
+- `--radius-full`: 9999px (pills)
 
 ## Shadows
 
+Minimal use. Mac utilities don't rely on shadows for depth.
+
 ```css
---shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
---shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
---shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.45);
+--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.20);
+--shadow-md: 0 4px 12px rgba(0, 0, 0, 0.30);
 --shadow-glow: 0 0 20px var(--accent-glow);
 ```
 
-## Component States
+## Layout Architecture (Permute-style)
 
-### Buttons
+```
++--------------------------------------------------+
+|  ImageStript                          [Lang] [?] |  Header (minimal)
++--------------------------------------------------+
+|                                                  |
+|                                                  |
+|              [  Large Drop Zone  ]               |  Center (flexible)
+|         Drag images here or click to browse      |
+|                                                  |
+|  +----------+  +----------+  +----------+        |  File cards (grid)
+|  | file.jpg |  | file.png |  | file.webp|        |
+|  | [Clean]  |  | [AI ✓]   |  | [...]    |        |
+|  +----------+  +----------+  +----------+        |
+|                                                  |
+|              [  Process All  ]                   |  Action (centered, contextual)
+|                                                  |
++--------------------------------------------------+
+```
 
-- **Primary**: bg accent, white text, subtle glow shadow. Hover: brighter bg + lift 1px + larger glow. Active: press down.
-- **Secondary**: bg elevated, border default, text primary. Hover: bg hover, border accent-dim.
-- **Ghost**: transparent bg, text secondary. Hover: bg elevated, text primary.
-- **Danger Ghost**: transparent bg, text secondary. Hover: bg danger-bg, text danger.
-- **Icon Button**: 32×32, transparent, centered icon. Hover: bg elevated.
+### States
 
-### Inputs / Sliders
+**Empty State:**
+- Full-height centered drop zone
+- Animated dashed border (subtle pulse when dragging)
+- Icon + short text + supported formats hint
 
-- Track: bg border-default, height 3px, radius 2px
-- Thumb: 14×14 circle, bg accent, shadow glow. Hover: scale 1.2
-- Value label: mono font, tabular-nums
+**With Files:**
+- Drop zone collapses to a compact "add more" strip at top
+- File cards in a responsive grid (auto-fill, min 120px)
+- Each card: thumbnail, filename, status badge (Clean / AI / Processing...)
+- Click card to preview (modal or inline expand)
 
-### File List Item
+**Processing:**
+- Cards show inline spinner + "Processing..." badge
+- Main action button disabled, shows progress
 
-- Default: transparent bg, text secondary
-- Hover: bg elevated
-- Active: bg accent-dim, border 1px accent-glow, text primary
-- Checkbox: 16×16 rounded 4px, border default. Checked: bg accent, white check icon
+**Post-Process:**
+- Cards update with new status
+- "Save" action appears per-card and as batch "Save All"
 
-### Preview Frame
+## Components
 
-- Border: 1px border-default, radius-lg
-- Image: object-fit contain, max 100%
-- Hover: subtle inner shadow / border brightens
+### Drop Zone
 
-### Badge
+- Large, centered, rounded rectangle
+- Dashed border (`--border-default`), 2px
+- On drag-over: border becomes `--accent`, subtle background tint, icon scales up
+- On drop: brief flash of `--accent-glow`, then collapse
 
-- Pill shape (radius-full)
-- Success: bg success-bg, text success
-- Warning: bg warning-bg, text warning
-- Neutral: bg elevated, text tertiary
+### File Card
+
+- Fixed aspect ratio (square or 4:3)
+- Thumbnail: `object-fit: cover`
+- Overlay at bottom: gradient + filename
+- Top-right badge: status
+  - `Clean` — green dot + text
+  - `AI` — yellow warning
+  - `Processing...` — spinner
+- Hover: slight scale up (1.02), border brightens
+- Selected: `--accent` border, glow shadow
+
+### Action Button (Primary)
+
+- Centered, prominent
+- Large padding (14px 32px)
+- `--accent` background, white text
+- Icon + text
+- States: default → hover (brighten + lift) → active (press) → disabled (opacity 0.4)
+
+### Action Button (Secondary / Per-card)
+
+- Small, inline with card
+- Ghost style: transparent bg, `--text-secondary`
+- Hover: `--bg-hover`
+
+### Preset Selector
+
+- Horizontal segmented control (not dropdown)
+- Options: Subtle | Standard | Aggressive
+- Active: filled `--accent`
+- Advanced: chevron to expand parameter sliders below
+
+### Parameter Sliders (Advanced, Collapsed)
+
+- Only visible when expanded
+- Minimal: label + slider + value
+- Slider: thin track (3px), small thumb (12px circle)
 
 ### Toast
 
-- Bottom-right stack
-- bg elevated, border default, shadow-lg
-- Icon left, text body
-- Enter: slideUp + scale. Exit: fadeOut + slideDown
+- Bottom-center (not corner — more native Mac feel)
+- Brief, auto-dismiss
+- Success: check icon + green accent
+- Error: alert icon + red accent
 
 ## Motion Principles
 
-- **Easing**: `cubic-bezier(0.4, 0, 0.2, 1)` for UI transitions
-- **Duration**: 150ms for micro-interactions (hover, active), 250ms for layout changes
+- **Easing**: `cubic-bezier(0.25, 0.1, 0.25, 1)` — softer, more native
+- **Duration**: 200ms for most transitions
 - **Patterns**:
-  - Panel content: fadeIn
-  - Toast: slideUp + scaleIn
-  - Selection change: cross-fade images
-  - Gallery hover: translateY(-2px) + shadow
-- **Performance**: use `transform` and `opacity` only
+  - File cards: staggered fade-in (50ms delay each)
+  - Drop zone collapse: height shrink + fade
+  - Card hover: scale(1.02) + border-color
+  - Processing: subtle pulse on card border
+  - Toast: slideUp + fadeIn
 
-## Layout Architecture
+## Comparison: Before vs After
 
-```
-+--------------------------------------------------+
-|  [Logo] ImageStript          [Add] [Clear]       |  Header (40px, draggable)
-+----------+---------------------------------------+
-|          |                                       |
-| Sidebar  |         Main Preview Area             |
-| (280px)  |         (flexible, centered)          |
-|          |                                       |
-| Files    |    [Before]        [After]            |
-| Params   |                                       |
-|          |    [Process] [Save] [Save All]        |
-|          |                                       |
-+----------+---------------------------------------+
-|              Report / Status Bar                 |
-+--------------------------------------------------+
-```
+| Aspect | Before (IDE-style) | After (Permute-style) |
+|--------|-------------------|----------------------|
+| Layout | 3 panels + header + bottom bar | Single workspace, contextual |
+| File list | Persistent left sidebar thumbnail strip | Grid of cards, appears when files added |
+| Preview | Side-by-side Before/After panels | Inline card + modal/expand for detail |
+| Parameters | Persistent right panel | Collapsible, preset-first |
+| Actions | Fixed bottom strip | Contextual, near content |
+| Empty state | Small drop zone in sidebar | Full-screen invitation |
+| Visual weight | Heavy borders, panels | Almost flat, cards float on canvas |
 
-- **Header**: minimal, draggable region, logo left, actions right
-- **Sidebar**: fixed 280px, file list top, parameters bottom, divider between
-- **Main**: flex 1, centered content, preview side-by-side or gallery grid
-- **Report**: bottom bar, slides up when content available
+## Implementation Notes
+
+1. Remove `panel-left`, `panel-right`, `action-strip` as persistent elements
+2. Make `panel-center` the only persistent region
+3. File grid replaces thumbnail list
+4. Drop zone is the default view, collapses to "add more" bar when files exist
+5. Preset selector + advanced toggle live above the grid
+6. Primary action button is centered below the grid
+7. Per-card actions (Save, Delete) appear on hover or as inline buttons
